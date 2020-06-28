@@ -46,7 +46,7 @@ type queryUser struct {
 	passwordHash sql.NullString
 }
 
-func GetInterface (l int, qu *queryUser) (iface []interface{}){
+func (qu *queryUser)GetInterface (l int) (iface []interface{}){
 	iface = make([]interface{}, l)
 	iface[0] = &qu.id
 	iface[1] = &qu.name
@@ -55,7 +55,7 @@ func GetInterface (l int, qu *queryUser) (iface []interface{}){
 	return
 }
 
-func (qu queryUser) ToUser () (u *User){
+func (qu *queryUser) ToUser () (u *User){
 	u = new(User)
 	u.id = qu.id.Int64
 	u.name = qu.name.String
@@ -75,7 +75,6 @@ type Folder struct {
 }
 
 func CleanUp (db *sqlx.DB){
-	db.MustExec("USE mysql")
 	db.MustExec("DROP TABLE users")
 	db.Close()
 }
@@ -122,8 +121,8 @@ func GetUser(db *sqlx.DB, pu *User) (*User, error) {
 	if(err != nil){
 		fmt.Println(err)
 	}
-	var qu queryUser
-	var s = GetInterface(len(l), &qu)
+	var qu *queryUser = new(queryUser)
+	var s = qu.GetInterface(len(l))
 
 	for resp.Next() {
 		if err:=resp.Scan(s...); err !=nil {
@@ -162,16 +161,16 @@ func (u User) CreateUser (db *sqlx.DB) (error){
 }
 
 // Authenticate checks password against database
-func (u User) Authenticate (db *sqlx.DB) (error error) {
-	// hash := pass.Sha256(u.passwordHash)
-	// pu, err := GetUser(db, &u)
-	// if err != nil {
-		// log.Println(err.Error())
-	// }
-	// if pu.passwordHash == hash {
-	// 	fmt.Println("Same guy")
-	// }
-	return error
+func (u *User) Authenticate (db *sqlx.DB) (permission bool) {
+	pu, err := GetUser(db, u)
+	if err != nil {
+		log.Println(err.Error())
+	}
+	if CheckPass("FireFace", pu.passwordHash){
+		fmt.Println("Same guy")
+		return true	
+	}
+	return false
 }
 
 func run() {
@@ -201,6 +200,7 @@ func run2() {
 
 // DummyUsers creates dummy users for use in testing
 func DummyUsers(db *sqlx.DB){
+	db.MustExec(userSchema)
 	u1:=new(User)
 	u1.name = "George"
 	u1.username="210978"

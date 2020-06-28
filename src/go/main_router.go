@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 )
 
 const(
@@ -38,7 +39,6 @@ func setupRouter() *gin.Engine {
 		var u = new(User)
 		u.name = user
 		nu, _ := GetUser(db, u)
-		fmt.Println(nu.username, nu.id)
 		c.JSON(http.StatusOK, gin.H{"id": nu.id, "username": nu.username})
 	})
 
@@ -59,8 +59,15 @@ func setupRouter() *gin.Engine {
 		}
 	})
 
-
-
+	r.POST("/users/:name/login", func(c *gin.Context) {
+		name := c.Params.ByName("name")
+		var u = new(User)
+		u.name = name
+		u, _ = GetUser(db, u)
+		i:= new(interface{})
+		c.ShouldBindBodyWith(*i, binding.JSON)
+		fmt.Println("/users/:name/login",*i)
+	})
 
 	return r
 }

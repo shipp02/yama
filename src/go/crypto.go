@@ -15,6 +15,14 @@ func Sha256(s string)(hash string){
 	return string(dst)
 }
 
-func mainx(){
+func CheckPass(pass string, hash string)(t bool){
+	passHash := Sha256(pass)
+	if passHash == hash{
+		return true
+	} 
+	return false
+}
+
+func mainC(){
 	fmt.Println(Sha256("Aashay"))
 }
