@@ -46,7 +46,7 @@ type queryUser struct {
 	passwordHash sql.NullString
 }
 
-func (qu queryUser) GetInterface (l int) (iface []interface{}){
+func GetInterface (l int, qu *queryUser) (iface []interface{}){
 	iface = make([]interface{}, l)
 	iface[0] = &qu.id
 	iface[1] = &qu.name
@@ -56,6 +56,7 @@ func (qu queryUser) GetInterface (l int) (iface []interface{}){
 }
 
 func (qu queryUser) ToUser () (u *User){
+	fmt.Println("ToUser",qu)
 	u = new(User)
 	u.id = qu.id.Int64
 	u.name = qu.name.String
@@ -72,11 +73,16 @@ type Group struct {
 
 type Folder struct {
 	view Group
+}
 
+func CleanUp (db *sqlx.DB){
+	db.MustExec("USE mysql")
+	db.MustExec("DROP TABLE users")
+	db.Close()
 }
 
 func Connect() (db *sqlx.DB){
-	db, err := sqlx.Connect("mysql", "user=root password=yoursql dbname=bar sslmode=disable")
+	db,err:= sqlx.Connect("mysql", "root:yoursql@tcp(localhost:3306)/mysql")
 	if err != nil {
         log.Fatalln(err)
     }
@@ -108,25 +114,37 @@ func GetUser(db *sqlx.DB, pu *User) (*User, error) {
 		UNAMEQ := strings.Replace(usernameQ, "$(UNAME)", pu.username, 1)
 		query = query + UNAMEQ
 	}
+	fmt.Println(query)
 	resp,err := db.Query(query)
 	if err != nil{
 		log.Fatal("Query Unsatisfied" + query +  "\n" + err.Error())
 		error = errors.New("Query Unsatisfied" + query +  "\n" + err.Error())
 	}
-	l,_ := resp.Columns()
+	l,err := resp.Columns()
+	if(err != nil){
+		fmt.Println(err)
+	}
 	var qu queryUser
-	var s = qu.GetInterface(len(l))
+	var s = GetInterface(len(l), &qu)
 
 	for resp.Next() {
-	if err:=resp.Scan(s...); err !=nil {
+		if err:=resp.Scan(s...); err !=nil {
 			log.Fatal(err)
-		error = errors.New(err.Error())
-	}
+			error = errors.New(err.Error())
+		}
+		fmt.Println()
+		fmt.Println(qu)
+		fmt.Println(s...)
+		fmt.Println(s)
+		fmt.Printf("%p", &qu.id)
+		fmt.Println()
+		// s... is filled here
 	}
 	
-	if pu.passwordHash == ""{
+	if qu.passwordHash.String == ""{
 		error = errors.New("Could not find user")
 	}
+	fmt.Println("query User: ",qu)
 	return qu.ToUser(), error
 }
 
@@ -144,10 +162,10 @@ func (u User) CreateUser (db *sqlx.DB) (error){
 	}
 	if error == nil {
 		var execu = "INSERT INTO users (username, name, password_hash)VALUES(\"$(UNAME)\", \"$(NAME)\", SHA2(\"$(PASS)\",256))"
-		execu =  strings.Replace(execu, "$(NAME)", u.username, 1)
+		execu =  strings.Replace(execu, "$(UNAME)", u.username, 1)
 		execu = strings.Replace(execu, "$(PASS)", u.passwordHash, 1)
-		execu = strings.Replace(execu, "$(UNAME)", u.name, 1)
-		fmt.Println(execu)
+		execu = strings.Replace(execu, "$(NAME)", u.name, 1)
+		fmt.Println("Create String: "+execu)
 		db.MustExec(execu)
 	}
 	return error
@@ -167,10 +185,7 @@ func (u User) Authenticate (db *sqlx.DB) (error error) {
 }
 
 func run() {
-	db,err := sqlx.Connect("mysql", "root:yoursql@tcp(localhost:3306)/")
-	if err!=nil{
-		log.Fatal("Could not connect to db")
-	}
+	db:= Connect() 
 	db.MustExec("USE  mysql")
 	db.MustExec(userSchema)
 
@@ -181,23 +196,43 @@ func run() {
 		fmt.Println(error.Error())
 	}
 	fmt.Println(pu.username, pu.passwordHash, "User")
+	db.Close()
 }
 
 func run2() {
-	db,err := sqlx.Connect("mysql", "root:yoursql@tcp(localhost:3306)/")
-	if err!=nil{
-		log.Fatal("Could not connect to db")
-	}
-	db.MustExec("USE  mysql")
+	db := Connect() 
 	var u User
 	u.name= "Chasma"
 	u.username = "Devi"
 	u.passwordHash = "KALI MA"
-	err = u.CreateUser(db)
+	err := u.CreateUser(db)
 	fmt.Println(err)
+	db.Close()
+}
+
+// DummyUsers creates dummy users for use in testing
+func DummyUsers(db *sqlx.DB){
+	u1:=new(User)
+	u1.name = "George"
+	u1.username="210978"
+	u1.passwordHash="Hkis210978"
+	u1.CreateUser(db)
+	u2:=new(User)
+	u2.name="John"
+	u2.username="teacher"
+	u2.passwordHash="Yes,papa!"
+	u2.CreateUser(db)
 }
 
 func main(){
+	db:= Connect() 
 	run()
+	DummyUsers(db)
 	run2()
+	pu := new(User)
+	pu.name = "George"
+	user, _:= GetUser(db, pu)
+	fmt.Println(user)
+	// CleanUp(db)
+	db.Close()
 }
