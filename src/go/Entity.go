@@ -56,7 +56,6 @@ func GetInterface (l int, qu *queryUser) (iface []interface{}){
 }
 
 func (qu queryUser) ToUser () (u *User){
-	fmt.Println("ToUser",qu)
 	u = new(User)
 	u.id = qu.id.Int64
 	u.name = qu.name.String
@@ -114,7 +113,6 @@ func GetUser(db *sqlx.DB, pu *User) (*User, error) {
 		UNAMEQ := strings.Replace(usernameQ, "$(UNAME)", pu.username, 1)
 		query = query + UNAMEQ
 	}
-	fmt.Println(query)
 	resp,err := db.Query(query)
 	if err != nil{
 		log.Fatal("Query Unsatisfied" + query +  "\n" + err.Error())
@@ -132,13 +130,6 @@ func GetUser(db *sqlx.DB, pu *User) (*User, error) {
 			log.Fatal(err)
 			error = errors.New(err.Error())
 		}
-		fmt.Println()
-		fmt.Println(qu)
-		fmt.Println(s...)
-		fmt.Println(s)
-		fmt.Printf("%p", &qu.id)
-		fmt.Println()
-		// s... is filled here
 	}
 	
 	if qu.passwordHash.String == ""{
@@ -165,7 +156,6 @@ func (u User) CreateUser (db *sqlx.DB) (error){
 		execu =  strings.Replace(execu, "$(UNAME)", u.username, 1)
 		execu = strings.Replace(execu, "$(PASS)", u.passwordHash, 1)
 		execu = strings.Replace(execu, "$(NAME)", u.name, 1)
-		fmt.Println("Create String: "+execu)
 		db.MustExec(execu)
 	}
 	return error
@@ -195,7 +185,6 @@ func run() {
 	if error != nil{
 		fmt.Println(error.Error())
 	}
-	fmt.Println(pu.username, pu.passwordHash, "User")
 	db.Close()
 }
 
@@ -224,7 +213,7 @@ func DummyUsers(db *sqlx.DB){
 	u2.CreateUser(db)
 }
 
-func main(){
+func mainE(){
 	db:= Connect() 
 	run()
 	DummyUsers(db)
