@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+	"encoding/json"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 )
 
 const(
@@ -60,13 +60,20 @@ func setupRouter() *gin.Engine {
 	})
 
 	r.POST("/users/:name/login", func(c *gin.Context) {
+		var pass = new(interface{})
 		name := c.Params.ByName("name")
 		var u = new(User)
 		u.name = name
 		u, _ = GetUser(db, u)
-		i:= new(interface{})
-		c.ShouldBindBodyWith(*i, binding.JSON)
-		fmt.Println("/users/:name/login",*i)
+		length, err := strconv.Atoi(c.Request.Header.Get("Content-Length"))
+		if err != nil{
+			log.Fatal(err)
+		}
+		body:= make([]byte, length)
+		length,_ = c.Request.Body.Read(body)
+		err=json.Unmarshal(body, pass)
+		fmt.Println(err)
+		fmt.Println(*pass)
 	})
 
 	return r
