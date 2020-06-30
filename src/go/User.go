@@ -65,15 +65,6 @@ func (qu *queryUser) ToUser () (u *User){
 }
 
 
-type Group struct {
-	members []User
-	owner User
-}
-
-type Folder struct {
-	view Group
-}
-
 func CleanUp (db *sqlx.DB){
 	db.MustExec("DROP TABLE users")
 	db.Close()
