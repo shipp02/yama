@@ -106,7 +106,7 @@ func (u *User) GetPosts(db *sqlx.DB) ([]Post, error){
 		SELECT * FROM posts
 		WHERE owner_id=$(OID)
 	`
-	query = strings.Replace(query, "$(OID)", strconv.FormatInt(u.id, 10), 1)
+	query = strings.Replace(query, "$(OID)", strconv.FormatInt(u.Id, 10), 1)
 	fmt.Println(query)
 	erro:=db.Select(&posts, query)
 	if erro != nil{

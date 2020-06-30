@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	// "encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -35,9 +35,9 @@ func setupRouter() *gin.Engine {
 			user := c.Params.ByName("name")
 			fmt.Println(user)
 			var u = new(User)
-			u.name = user
+			u.Name = user
 			nu, _ := GetUser(db, u)
-			c.JSON(http.StatusOK, gin.H{"id": nu.id, "username": nu.username})
+			c.JSON(http.StatusOK, gin.H{"id": nu.Id, "username": nu.Username})
 		})
 
 	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
@@ -58,10 +58,9 @@ func setupRouter() *gin.Engine {
 	})
 
 	r.POST("/users/:name/login", func(c *gin.Context) {
-		var pass = new(interface{})
 		name := c.Params.ByName("name")
 		var u = new(User)
-		u.name = name
+		u.Name = name
 		u, _ = GetUser(db, u)
 		length, err := strconv.Atoi(c.Request.Header.Get("Content-Length"))
 		if err != nil {
@@ -69,9 +68,7 @@ func setupRouter() *gin.Engine {
 		}
 		body := make([]byte, length)
 		length, _ = c.Request.Body.Read(body)
-		err = json.Unmarshal(body, pass)
-		fmt.Println(err)
-		fmt.Println(*pass)
+		ToPassword(body)
 	})
 
 	return r

@@ -16,10 +16,10 @@ import (
 
 // User Represents user of application
 type User struct {
-	id           int64
-	name         string
-	username     string
-	passwordHash string
+	Id           int64
+	Name         string
+	Username     string
+	PasswordHash string
 	// groups []Group
 	permissions []int
 }
@@ -51,10 +51,10 @@ func (qu *queryUser) GetInterface(l int) (iface []interface{}) {
 
 func (qu *queryUser) ToUser() (u *User) {
 	u = new(User)
-	u.id = qu.id.Int64
-	u.name = qu.name.String
-	u.username = qu.username.String
-	u.passwordHash = qu.passwordHash.String
+	u.Id = qu.id.Int64
+	u.Name = qu.name.String
+	u.Username = qu.username.String
+	u.PasswordHash = qu.passwordHash.String
 	return
 }
 
@@ -76,7 +76,7 @@ func Connect() (db *sqlx.DB) {
 // GetUser filled in from database
 func GetUser(db *sqlx.DB, pu *User) (*User, error) {
 	var error error
-	if pu.id == 0 && pu.name == "" && pu.username == "" {
+	if pu.Id == 0 && pu.Name == "" && pu.Username == "" {
 		error = errors.New("Insufficient data")
 	}
 	var query = `
@@ -87,14 +87,14 @@ func GetUser(db *sqlx.DB, pu *User) (*User, error) {
 	const nameQ = "name=\"$(NAME)\"\n"
 	const usernameQ = "username=\"$(UNAME)\"\n"
 	var where string
-	if pu.id != 0 {
-		where = strings.Replace(idQ, "$(ID)", strconv.FormatInt(pu.id, 10), 1)
+	if pu.Id != 0 {
+		where = strings.Replace(idQ, "$(ID)", strconv.FormatInt(pu.Id, 10), 1)
 	}
-	if pu.name != "" && where == ""{
-		where= strings.Replace(nameQ, "$(NAME)", pu.name, 1)
+	if pu.Name != "" && where == ""{
+		where= strings.Replace(nameQ, "$(NAME)", pu.Name, 1)
 	}
-	if pu.username != "" && where == ""{
-		where= strings.Replace(usernameQ, "$(UNAME)", pu.username, 1)
+	if pu.Username != "" && where == ""{
+		where= strings.Replace(usernameQ, "$(UNAME)", pu.Username, 1)
 	}
 	resp, err := db.Query(query+where)
 	if err != nil {
@@ -126,19 +126,19 @@ func GetUser(db *sqlx.DB, pu *User) (*User, error) {
 func (u User) CreateUser(db *sqlx.DB) error {
 	var pu = new(User)
 	var error error
-	pu.username = u.username
+	pu.Username = u.Username
 	pu, err := GetUser(db, pu)
 	if err == nil {
 		error = errors.New("User already exists")
 	}
-	if u.name == "" || u.username == "" || u.passwordHash == "" {
+	if u.Name == "" || u.Username == "" || u.PasswordHash == "" {
 		error = errors.New("User incomplete")
 	}
 	if error == nil {
 		var execu = "INSERT INTO users (username, name, password_hash)VALUES(\"$(UNAME)\", \"$(NAME)\", SHA2(\"$(PASS)\",256))"
-		execu = strings.Replace(execu, "$(UNAME)", u.username, 1)
-		execu = strings.Replace(execu, "$(PASS)", u.passwordHash, 1)
-		execu = strings.Replace(execu, "$(NAME)", u.name, 1)
+		execu = strings.Replace(execu, "$(UNAME)", u.Username, 1)
+		execu = strings.Replace(execu, "$(PASS)", u.PasswordHash, 1)
+		execu = strings.Replace(execu, "$(NAME)", u.Name, 1)
 		db.MustExec(execu)
 	}
 	return error
@@ -150,7 +150,7 @@ func (u *User) Authenticate(db *sqlx.DB) (permission bool) {
 	if err != nil {
 		log.Println(err.Error())
 	}
-	if CheckPass("FireFace", pu.passwordHash) {
+	if CheckPass("FireFace", pu.PasswordHash) {
 		fmt.Println("Same guy")
 		return true
 	}
@@ -163,7 +163,7 @@ func run() {
 	db.MustExec(userSchema)
 
 	var pu *User = new(User)
-	pu.id = 100
+	pu.Id = 100
 	pu, error := GetUser(db, pu)
 	if error != nil {
 		fmt.Println(error.Error())
@@ -174,9 +174,9 @@ func run() {
 func run2() {
 	db := Connect()
 	var u User
-	u.name = "Chasma"
-	u.username = "Devi"
-	u.passwordHash = "KALI MA"
+	u.Name = "Chasma"
+	u.Username = "Devi"
+	u.PasswordHash = "KALI MA"
 	err := u.CreateUser(db)
 	fmt.Println(err)
 	db.Close()
@@ -186,14 +186,14 @@ func run2() {
 func DummyUsers(db *sqlx.DB) {
 	db.MustExec(userSchema)
 	u1 := new(User)
-	u1.name = "George"
-	u1.username = "210978"
-	u1.passwordHash = "Hkis210978"
+	u1.Name = "George"
+	u1.Username = "210978"
+	u1.PasswordHash = "Hkis210978"
 	u1.CreateUser(db)
 	u2 := new(User)
-	u2.name = "John"
-	u2.username = "teacher"
-	u2.passwordHash = "Yes,papa!"
+	u2.Name = "John"
+	u2.Username = "teacher"
+	u2.PasswordHash = "Yes,papa!"
 	u2.CreateUser(db)
 
 	db.MustExec(PostSchema)
@@ -219,7 +219,7 @@ func mainE() {
 	DummyUsers(db)
 	run2()
 	pu := new(User)
-	pu.name = "George"
+	pu.Name = "George"
 	user, _ := GetUser(db, pu)
 	fmt.Println(user)
 	// CleanUp(db)
