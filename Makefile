@@ -17,3 +17,7 @@ build:
 run:
 	make build
 	$(RUN_CMD)
+
+.PHONY: doc
+doc:
+	go doc $(SRC_DIR)

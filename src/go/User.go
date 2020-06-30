@@ -13,11 +13,6 @@ import (
 	// pass "./password"
 )
 
-const ( // iota is reset to 0
-	STUDENT = iota // c0 == 0
-	OWNER   = iota // c1 == 1
-	ADMIN   = iota // c2 == 2
-)
 
 // User Represents user of application
 type User struct {
@@ -63,11 +58,13 @@ func (qu *queryUser) ToUser() (u *User) {
 	return
 }
 
+// CleanUp removes tables after tests
 func CleanUp(db *sqlx.DB) {
 	db.MustExec("DROP TABLE users")
 	db.Close()
 }
 
+// Connect connects to my database
 func Connect() (db *sqlx.DB) {
 	db, err := sqlx.Connect("mysql", "root:yoursql@tcp(localhost:3306)/mysql")
 	if err != nil {
@@ -211,6 +208,9 @@ func DummyUsers(db *sqlx.DB) {
 	if err!=nil{
 		fmt.Println(err)
 	}
+
+	db.MustExec(GroupSchema)
+	db.MustExec(GroupUserSchema)
 }
 
 func mainE() {

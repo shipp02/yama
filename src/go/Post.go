@@ -12,6 +12,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// PostSchema Schema for posts table
 const PostSchema = `
 CREATE TABLE posts(
 	id int NOT NULL AUTO_INCREMENT,
@@ -22,8 +23,9 @@ CREATE TABLE posts(
 );
 `
 
+// Post represents a post on a message board
 type Post struct {
-	Id      int64  `db:"id"`
+	ID      int64  `db:"id"`
 	OwnerID int64  `db:"owner_id"`
 	Text    string `db:"text"`
 }
@@ -45,13 +47,14 @@ func (qp *queryPost) GetInterface(l int) (s []interface{}) {
 func (qp *queryPost) ToPost() (p *Post) {
 	// fmt.Println(*qp)
 	p = new(Post)
-	p.Id = qp.id.Int64
+	p.ID = qp.id.Int64
 	p.OwnerID = qp.OwnerID.Int64
 	p.Text = qp.text.String
 	// fmt.Println(p)
 	return
 }
 
+// GetPost will fetch particular post from db
 func GetPost(db *sqlx.DB, p *Post) (*Post, error) {
 	var err error
 	var query = `
@@ -62,14 +65,14 @@ func GetPost(db *sqlx.DB, p *Post) (*Post, error) {
 	var idQ = "WHERE id=$(ID)"
 	var oidQ = "WHERE owner_id=$(OID)"
 
-	if p.Id == 0 && p.OwnerID == 0 {
+	if p.ID == 0 && p.OwnerID == 0 {
 		err = errors.New("Insufficient data")
 	}
 
 	var where string
 
-	if p.Id != 0 && where == "" {
-		where = strings.Replace(idQ, "$(ID)", strconv.FormatInt(p.Id, 10), 1)
+	if p.ID != 0 && where == "" {
+		where = strings.Replace(idQ, "$(ID)", strconv.FormatInt(p.ID, 10), 1)
 	}
 	if p.OwnerID != 0 && where == "" {
 		where = strings.Replace(oidQ, "$(OID)", strconv.FormatInt(p.OwnerID, 10), 1)
@@ -95,6 +98,7 @@ func GetPost(db *sqlx.DB, p *Post) (*Post, error) {
 	return p, err
 }
 
+// GetPosts gets all posts of a user
 func (u *User) GetPosts(db *sqlx.DB) ([]Post, error){
 	var err error
 	posts := []Post{}
@@ -112,10 +116,11 @@ func (u *User) GetPosts(db *sqlx.DB) ([]Post, error){
 	return posts, err
 }
 
+// CreatePost Stores the post in database
 func (p *Post) CreatePost(db *sqlx.DB) error {
 	var err error
 	qp, _ := GetPost(db, p)
-	if qp.Id != 0 {
+	if qp.ID != 0 {
 		err = errors.New("Post exists")
 	}
 

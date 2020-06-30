@@ -15,6 +15,7 @@ func Sha256(s string)(hash string){
 	return string(dst)
 }
 
+// CheckPass checks the password return true if correct
 func CheckPass(pass string, hash string)(t bool){
 	passHash := Sha256(pass)
 	if passHash == hash{
