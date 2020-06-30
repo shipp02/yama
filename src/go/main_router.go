@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,37 +11,34 @@ import (
 	"strconv"
 	"syscall"
 	"time"
-	"encoding/json"
 
 	"github.com/gin-gonic/gin"
 )
 
-const(
+const (
 	// PORT is used to configure server port
-	PORT=8080
+	PORT = 8080
 )
-
-
 
 func setupRouter() *gin.Engine {
 	db := Connect()
-	DummyUsers(db)
-	r:= gin.Default()
+	go DummyUsers(db)
+	r := gin.Default()
 
-	// Ping route
-	r.GET("/ping", func(c *gin.Context){
+	// Ping route1¡
+	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 
 	r.GET("/users/:name",
-	func(c *gin.Context){
-		user := c.Params.ByName("name")
-		fmt.Println(user)
-		var u = new(User)
-		u.name = user
-		nu, _ := GetUser(db, u)
-		c.JSON(http.StatusOK, gin.H{"id": nu.id, "username": nu.username})
-	})
+		func(c *gin.Context) {
+			user := c.Params.ByName("name")
+			fmt.Println(user)
+			var u = new(User)
+			u.name = user
+			nu, _ := GetUser(db, u)
+			c.JSON(http.StatusOK, gin.H{"id": nu.id, "username": nu.username})
+		})
 
 	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
 		"foo":  "bar", // user:foo password:bar
@@ -66,12 +64,12 @@ func setupRouter() *gin.Engine {
 		u.name = name
 		u, _ = GetUser(db, u)
 		length, err := strconv.Atoi(c.Request.Header.Get("Content-Length"))
-		if err != nil{
+		if err != nil {
 			log.Fatal(err)
 		}
-		body:= make([]byte, length)
-		length,_ = c.Request.Body.Read(body)
-		err=json.Unmarshal(body, pass)
+		body := make([]byte, length)
+		length, _ = c.Request.Body.Read(body)
+		err = json.Unmarshal(body, pass)
 		fmt.Println(err)
 		fmt.Println(*pass)
 	})
@@ -79,13 +77,13 @@ func setupRouter() *gin.Engine {
 	return r
 }
 
-func runServer(engine *gin.Engine){
+func runServer(engine *gin.Engine) {
 	srv := &http.Server{
 		Addr:    ":" + strconv.Itoa(PORT),
 		Handler: engine,
 	}
 
-	go func(){
+	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)
 		}
@@ -104,11 +102,11 @@ func runServer(engine *gin.Engine){
 	if err := srv.Shutdown(ctx); err != nil {
 		log.Fatal("Server forced to shutdown:", err)
 	}
-	
+
 	log.Println("Server exiting")
 }
 
 func main() {
-	r := setupRouter()	
+	r := setupRouter()
 	runServer(r)
 }

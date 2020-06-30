@@ -12,25 +12,26 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// CREATE TABLE posts(id int NOT NULL AUTO_INCREMENT,owner int NOT NULL,text TEXT,PRIMARY KEY(id), FOREIGN KEY (owner) REFERENCES users (id) );
 const PostSchema = `
 CREATE TABLE posts(
 	id int NOT NULL AUTO_INCREMENT,
-	owner int NOT NULL,
+	owner_id int NOT NULL,
 	text TEXT,
-	PRIMARY KEY(id)
-)
+	PRIMARY KEY(id),
+	FOREIGN KEY (owner_id) REFERENCES users (id) 
+);
 `
+
 type Post struct {
-	id int64
-	ownerID int64
-	text string
+	Id      int64  `db:"id"`
+	OwnerID int64  `db:"owner_id"`
+	Text    string `db:"text"`
 }
 
 type queryPost struct {
-	id sql.NullInt64
+	id      sql.NullInt64
 	OwnerID sql.NullInt64
-	text sql.NullString
+	text    sql.NullString
 }
 
 func (qp *queryPost) GetInterface(l int) (s []interface{}) {
@@ -41,17 +42,17 @@ func (qp *queryPost) GetInterface(l int) (s []interface{}) {
 	return
 }
 
-func (qp *queryPost) ToPost()(p *Post) {
+func (qp *queryPost) ToPost() (p *Post) {
 	// fmt.Println(*qp)
 	p = new(Post)
-	p.id = qp.id.Int64
-	p.ownerID = qp.OwnerID.Int64
-	p.text = qp.text.String
+	p.Id = qp.id.Int64
+	p.OwnerID = qp.OwnerID.Int64
+	p.Text = qp.text.String
 	// fmt.Println(p)
 	return
 }
 
-func GetPost(db *sqlx.DB, p *Post)(*Post, error){
+func GetPost(db *sqlx.DB, p *Post) (*Post, error) {
 	var err error
 	var query = `
 		SELECT * 
@@ -59,29 +60,30 @@ func GetPost(db *sqlx.DB, p *Post)(*Post, error){
 	`
 
 	var idQ = "WHERE id=$(ID)"
-	var oidQ = "WHERE owner=$(OID)"
+	var oidQ = "WHERE owner_id=$(OID)"
 
-	if p.id == 0 &&  p.ownerID == 0 {
+	if p.Id == 0 && p.OwnerID == 0 {
 		err = errors.New("Insufficient data")
 	}
 
 	var where string
 
-	if p.id != 0 && where == ""{
-		where = strings.Replace(idQ, "$(ID)", strconv.FormatInt(p.id, 10), 1)
+	if p.Id != 0 && where == "" {
+		where = strings.Replace(idQ, "$(ID)", strconv.FormatInt(p.Id, 10), 1)
 	}
-	if p.ownerID != 0 && where == ""{
-		where = strings.Replace(oidQ, "$(OID)", strconv.FormatInt(p.ownerID, 10), 1)
+	if p.OwnerID != 0 && where == "" {
+		where = strings.Replace(oidQ, "$(OID)", strconv.FormatInt(p.OwnerID, 10), 1)
 	}
 	query += where
 	resp, err := db.Query(query)
-	l,err := resp.Columns()
+	fmt.Println(resp, err)
+	l, err := resp.Columns()
 
-	var qp  =  new(queryPost)
+	var qp = new(queryPost)
 	is := qp.GetInterface(len(l))
 
 	for resp.Next() {
-		if err:=resp.Scan(is...); err !=nil {
+		if err := resp.Scan(is...); err != nil {
 			log.Fatal(err)
 			err = errors.New(err.Error())
 		}
@@ -93,43 +95,52 @@ func GetPost(db *sqlx.DB, p *Post)(*Post, error){
 	return p, err
 }
 
-func (p *Post) CreatePost (db *sqlx.DB) (error){
+func (u *User) GetPosts(db *sqlx.DB) ([]Post, error){
+	var err error
+	posts := []Post{}
+	query := `
+		SELECT * FROM posts
+		WHERE owner_id=$(OID)
+	`
+	query = strings.Replace(query, "$(OID)", strconv.FormatInt(u.id, 10), 1)
+	fmt.Println(query)
+	erro:=db.Select(&posts, query)
+	if erro != nil{
+		fmt.Println(erro)
+	}
+	fmt.Println(posts)
+	return posts, err
+}
+
+func (p *Post) CreatePost(db *sqlx.DB) error {
 	var err error
 	qp, _ := GetPost(db, p)
-	if qp.id != 0 {
+	if qp.Id != 0 {
 		err = errors.New("Post exists")
 	}
 
-	var exec = "INSERT INTO posts (owner, text) VALUES($(OID), \"$(TEXT)\")"
+	var exec = "INSERT INTO posts (owner_id, text) VALUES($(OID), \"$(TEXT)\")"
 
-	exec = strings.Replace(exec, "$(OID)", strconv.FormatInt(p.ownerID, 10), 1)
-	exec = strings.Replace(exec, "$(TEXT)", p.text, 1)
+	exec = strings.Replace(exec, "$(OID)", strconv.FormatInt(p.OwnerID, 10), 1)
+	exec = strings.Replace(exec, "$(TEXT)", p.Text, 1)
 	fmt.Println(exec)
 
 	db.MustExec(exec)
 	return err
 }
 
-func Connect() (db *sqlx.DB){
-	db,err:= sqlx.Connect("mysql", "root:yoursql@tcp(localhost:3306)/mysql")
-	if err != nil {
-        log.Fatalln(err)
-    }
-	return 
-}
-
-func main() {
+func mainP() {
 	db := Connect()
 	db.MustExec(PostSchema)
 	db.MustExec("INSERT INTO posts (owner, text) VALUES(20, \"NEW POST EH\")")
 	db.MustExec("INSERT INTO posts (owner, text) VALUES(21, \"another one EH\")")
 	p := new(Post)
-	p.ownerID = 10
-	p.text = "New method eh"
+	p.OwnerID = 10
+	p.Text = "New method eh"
 	p.CreatePost(db)
 
-	p.ownerID = 10
-	p,_ = GetPost(db, p)
+	p.OwnerID = 10
+	p, _ = GetPost(db, p)
 	// fmt.Printf("%p\n", p)
 	fmt.Println(p)
 }
