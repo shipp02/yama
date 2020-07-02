@@ -13,13 +13,13 @@ import (
 	// pass "./password"
 )
 
-
 // User Represents user of application
 type User struct {
 	Id           int64
 	Name         string
 	Username     string
 	PasswordHash string
+	JWT			 string
 	// groups []Group
 	permissions []int
 }
@@ -80,7 +80,8 @@ func GetUser(db *sqlx.DB, pu *User) (*User, error) {
 		error = errors.New("Insufficient data")
 	}
 	var query = `
-	SELECT * FROM users 
+	SELECT id, name, username, password_hash
+	FROM users 
 	WHERE
 	`
 	const idQ = "id=$(ID)\n"
@@ -135,7 +136,7 @@ func (u User) CreateUser(db *sqlx.DB) error {
 		error = errors.New("User incomplete")
 	}
 	if error == nil {
-		var execu = "INSERT INTO users (username, name, password_hash)VALUES(\"$(UNAME)\", \"$(NAME)\", SHA2(\"$(PASS)\",256))"
+		var execu = "INSERT INTO users (username, name, password_hash) VALUES(\"$(UNAME)\", \"$(NAME)\", SHA2(\"$(PASS)\",256))"
 		execu = strings.Replace(execu, "$(UNAME)", u.Username, 1)
 		execu = strings.Replace(execu, "$(PASS)", u.PasswordHash, 1)
 		execu = strings.Replace(execu, "$(NAME)", u.Name, 1)
@@ -146,14 +147,14 @@ func (u User) CreateUser(db *sqlx.DB) error {
 
 // Authenticate checks password against database
 func (u *User) Authenticate(db *sqlx.DB) (permission bool) {
-	pu, err := GetUser(db, u)
-	if err != nil {
-		log.Println(err.Error())
-	}
-	if CheckPass("FireFace", pu.PasswordHash) {
-		fmt.Println("Same guy")
-		return true
-	}
+	// pu, err := GetUser(db, u)
+	// if err != nil {
+	// 	log.Println(err.Error())
+	// }
+	// if CheckPass("FireFace", pu.PasswordHash) {
+	// 	fmt.Println("Same guy")
+	// 	return true
+	// }
 	return false
 }
 

@@ -68,7 +68,12 @@ func setupRouter() *gin.Engine {
 		}
 		body := make([]byte, length)
 		length, _ = c.Request.Body.Read(body)
-		ToPassword(body)
+		p := ToPassword(body)
+		if CheckPass(p, u.PasswordHash){
+			fmt.Println("Same guy")
+		}else {
+			fmt.Println("Wrong pass")
+		}
 	})
 
 	return r

@@ -11,11 +11,11 @@ type Password struct{
 	Password string	
 }
 
-func ToPassword(data []byte) (*User){
+func ToPassword(data []byte) (pass *Password){
 
-	user := &User{}
-	json.Unmarshal(data, user)
+	pass = new(Password)
+	json.Unmarshal(data, pass)
 
-	fmt.Println("JSON:", user)
-	return user
+	fmt.Println("JSON:", pass)
+	return 
 }
