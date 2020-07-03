@@ -11,6 +11,16 @@ type Password struct{
 	Password string	
 }
 
+type Auth struct {
+	JWT string
+	Valid bool
+}
+
+// func Auth(JWT *string, Valid bool)(a Auth){
+// 	a = Auth{*JWT, Valid}
+// 	return
+// }
+
 func ToPassword(data []byte) (pass *Password){
 
 	pass = new(Password)

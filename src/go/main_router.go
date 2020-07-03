@@ -71,8 +71,14 @@ func setupRouter() *gin.Engine {
 		p := ToPassword(body)
 		if CheckPass(p, u.PasswordHash){
 			fmt.Println("Same guy")
+			jchan:= make(chan []byte)
+			go u.GetJWT(&jchan)
+			jwt:= string(<-jchan)
+			c.JSON(http.StatusOK, Auth{jwt, true})
 		}else {
 			fmt.Println("Wrong pass")
+			jwt := "Invalid Password"
+			c.JSON(http.StatusForbidden, Auth{jwt, false})
 		}
 	})
 

@@ -33,15 +33,22 @@ func (u *User) GetJWT(jwtchan *chan []byte){
 	jc.Issuer = *conf.Issuer
 	jc.Subject = u.Username
 	jc.KeyID = u.PasswordHash
-	token,err := jc.RSASign(jwt.RS512, conf.PrivateKey)
-	btoken := make([]byte, base64.StdEncoding.EncodedLen(len(token)))
-	base64.StdEncoding.Encode(btoken, token)
+	// token,err := jc.RSASign(jwt.RS512, conf.PrivateKey)
+	// btoken := make([]byte, base64.StdEncoding.EncodedLen(len(token)))
+	// base64.StdEncoding.Encode(btoken, token)
+	// if err != nil {
+		// fmt.Println("GetUser jwt",err)
+	// }
+	// fmt.Println(string(btoken))
+	jwtToken, err := jc.HMACSign(jwt.HS512, *conf.Secret)
 	if err != nil {
 		fmt.Println("GetUser jwt",err)
 	}
-	fmt.Println(string(btoken))
+	btoken := make([]byte, base64.StdEncoding.EncodedLen(len(jwtToken)))
+	base64.StdEncoding.Encode(btoken, jwtToken)
 	jchan := *jwtchan
 	jchan <-  btoken
+	close(jchan)
 }
 
 func mainC(){
