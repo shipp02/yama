@@ -1,12 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
+	"log"
+	"strings"
 
 	"github.com/pascaldekloe/jwt"
+	"golang.org/x/crypto/pbkdf2"
 )
 
 // Sha256 returns hex hash string of a string
@@ -18,10 +23,30 @@ func Sha256(s string)(hash string){
 	return string(dst)
 }
 
+func Pbkdf2(s string)(hash string) {
+	pass := []byte(s)
+	salt := make([]byte, 20)
+	_,err :=rand.Read(salt)
+	if err != nil {
+		log.Fatal("func Pbkdf2 Password failed", err)
+	}
+	binhash := pbkdf2.Key(pass, salt, 4096, 256, sha256.New)
+	strsalt := base64.StdEncoding.EncodeToString(salt)
+	strhash := base64.StdEncoding.EncodeToString(binhash)
+	return	strsalt + ":" + strhash 
+}
+
 // CheckPass checks the password return true if correct
+// TODO: Change to Pbkdf2
 func CheckPass(pass *Password, hash string)(t bool){
-	passHash := Sha256(pass.Password)
-	if passHash == hash{
+	// passHash := Sha256(pass.Password)
+	fmt.Println("func CheckPass:hash:", hash)
+	passParts := strings.Split(hash, ":")
+	passhash,_ :=base64.StdEncoding.DecodeString(passParts[1])
+	salt, _:= base64.StdEncoding.DecodeString(passParts[0])
+	log.Printf(passParts[0])
+	binhash := pbkdf2.Key([]byte(pass.Password), salt, 4096, 256, sha256.New)
+	if bytes.Equal(binhash, passhash){
 		return true
 	} 
 	return false

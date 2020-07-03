@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/RichardKnop/jsonhal"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	// pass "./password"
@@ -15,6 +16,7 @@ import (
 
 // User Represents user of application
 type User struct {
+	jsonhal.Hal
 	Id           int64
 	Name         string
 	Username     string
@@ -29,7 +31,7 @@ CREATE TABLE users (
 	id int NOT NULL AUTO_INCREMENT,
 	name VARCHAR(50) NOT NULL ,
 	username VARCHAR(100) NOT NULL ,
-	password_hash VARCHAR(64) NOT NULL,
+	password_hash VARCHAR(373) NOT NULL,
 	PRIMARY KEY (id)
 )`
 
@@ -137,10 +139,13 @@ func (u User) CreateUser(db *sqlx.DB) error {
 	}
 	if error == nil {
 		var execu = "INSERT INTO users (username, name, password_hash) VALUES(\"$(UNAME)\", \"$(NAME)\", SHA2(\"$(PASS)\",256))"
+		var exec = "INSERT INTO users (username, name, password_hash) VALUES(\"%s\", \"%s\", \"%s\")"
+		exec = fmt.Sprintf(exec, u.Username, u.Name, Pbkdf2(u.PasswordHash))
 		execu = strings.Replace(execu, "$(UNAME)", u.Username, 1)
 		execu = strings.Replace(execu, "$(PASS)", u.PasswordHash, 1)
 		execu = strings.Replace(execu, "$(NAME)", u.Name, 1)
-		db.MustExec(execu)
+		fmt.Println(exec)
+		db.MustExec(exec)
 	}
 	return error
 }

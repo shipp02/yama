@@ -10,12 +10,13 @@ RUN_CMD := $(BIN_DIR)/site
 
 .PHONY: build
 build:
-	cd $(SRC_DIR);$(BUILD_CMD)
-	echo "Build complete"
+	@cd $(SRC_DIR);$(BUILD_CMD)
+	@echo "Build complete"
 
 .PHONY: run
 run:
-	make build
+	@echo "Building"
+	@make build
 	$(RUN_CMD)
 
 .PHONY: doc

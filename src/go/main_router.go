@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	hal "github.com/RichardKnop/jsonhal"
 )
 
 const (
@@ -36,8 +37,9 @@ func setupRouter() *gin.Engine {
 			fmt.Println(user)
 			var u = new(User)
 			u.Name = user
-			nu, _ := GetUser(db, u)
-			c.JSON(http.StatusOK, gin.H{"id": nu.Id, "username": nu.Username})
+			u, _ = GetUser(db, u)
+			u.SetLink("self", c.)
+			c.JSON(http.StatusOK, gin.H{"id": u.Id, "username": u.Username})
 		})
 
 	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
