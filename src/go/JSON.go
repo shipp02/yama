@@ -1,9 +1,11 @@
 package main
-// This file contains structs for JSON interactions. 
+
+// This file contains structs for JSON interactions.
 
 import (
 	"encoding/json"
-	"fmt"
+
+	"github.com/RichardKnop/jsonhal"
 )
 
 // Password is used for authentication
@@ -12,6 +14,7 @@ type Password struct{
 }
 
 type Auth struct {
+	jsonhal.Hal
 	JWT string
 	Valid bool
 }
@@ -22,10 +25,19 @@ type Auth struct {
 // }
 
 func ToPassword(data []byte) (pass *Password){
-
 	pass = new(Password)
 	json.Unmarshal(data, pass)
+	return
+}
 
-	fmt.Println("JSON:", pass)
-	return 
+type UDetails struct {
+	jsonhal.Hal
+	ID int64
+	Name string
+	Username string
+}
+
+func (u *User) ToUDetails() (*UDetails){
+	ud:= UDetails{ID:u.Id, Name:u.Name, Username: u.Username}
+	return &ud
 }

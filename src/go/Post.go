@@ -79,7 +79,7 @@ func GetPost(db *sqlx.DB, p *Post) (*Post, error) {
 	}
 	query += where
 	resp, err := db.Query(query)
-	fmt.Println(resp, err)
+	// fmt.Println(resp, err)
 	l, err := resp.Columns()
 
 	var qp = new(queryPost)
@@ -107,12 +107,12 @@ func (u *User) GetPosts(db *sqlx.DB) ([]Post, error){
 		WHERE owner_id=$(OID)
 	`
 	query = strings.Replace(query, "$(OID)", strconv.FormatInt(u.Id, 10), 1)
-	fmt.Println(query)
+	// fmt.Println(query)
 	erro:=db.Select(&posts, query)
 	if erro != nil{
 		fmt.Println(erro)
 	}
-	fmt.Println(posts)
+	// fmt.Println(posts)
 	return posts, err
 }
 
@@ -128,7 +128,7 @@ func (p *Post) CreatePost(db *sqlx.DB) error {
 
 	exec = strings.Replace(exec, "$(OID)", strconv.FormatInt(p.OwnerID, 10), 1)
 	exec = strings.Replace(exec, "$(TEXT)", p.Text, 1)
-	fmt.Println(exec)
+	// fmt.Println(exec)
 
 	db.MustExec(exec)
 	return err

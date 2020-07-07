@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/RichardKnop/jsonhal"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	// pass "./password"
@@ -16,7 +15,6 @@ import (
 
 // User Represents user of application
 type User struct {
-	jsonhal.Hal
 	Id           int64
 	Name         string
 	Username     string
@@ -121,7 +119,6 @@ func GetUser(db *sqlx.DB, pu *User) (*User, error) {
 	if qu.passwordHash.String == "" {
 		error = errors.New("Could not find user")
 	}
-	fmt.Println("query User: ", qu)
 	return qu.ToUser(), error
 }
 
@@ -144,7 +141,6 @@ func (u User) CreateUser(db *sqlx.DB) error {
 		execu = strings.Replace(execu, "$(UNAME)", u.Username, 1)
 		execu = strings.Replace(execu, "$(PASS)", u.PasswordHash, 1)
 		execu = strings.Replace(execu, "$(NAME)", u.Name, 1)
-		fmt.Println(exec)
 		db.MustExec(exec)
 	}
 	return error
@@ -184,7 +180,9 @@ func run2() {
 	u.Username = "Devi"
 	u.PasswordHash = "KALI MA"
 	err := u.CreateUser(db)
-	fmt.Println(err)
+	if err !=nil{
+		fmt.Println(err)
+	}
 	db.Close()
 }
 
@@ -215,8 +213,8 @@ func DummyUsers(db *sqlx.DB) {
 		fmt.Println(err)
 	}
 
-	db.MustExec(GroupSchema)
-	db.MustExec(GroupUserSchema)
+	// db.MustExec(GroupSchema)
+	// db.MustExec(GroupUserSchema)
 }
 
 func mainE() {

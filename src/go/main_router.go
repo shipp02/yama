@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	hal "github.com/RichardKnop/jsonhal"
+	// hal "github.com/RichardKnop/jsonhal"
 )
 
 const (
@@ -34,12 +34,13 @@ func setupRouter() *gin.Engine {
 	r.GET("/users/:name",
 		func(c *gin.Context) {
 			user := c.Params.ByName("name")
-			fmt.Println(user)
+			// fmt.Println(user)
 			var u = new(User)
 			u.Name = user
 			u, _ = GetUser(db, u)
-			u.SetLink("self", c.)
-			c.JSON(http.StatusOK, gin.H{"id": u.Id, "username": u.Username})
+			du:=u.ToUDetails()
+			du.SetLink("self", c.Request.URL.String(), "")
+			c.JSON(http.StatusOK, du) 
 		})
 
 	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
@@ -76,11 +77,11 @@ func setupRouter() *gin.Engine {
 			jchan:= make(chan []byte)
 			go u.GetJWT(&jchan)
 			jwt:= string(<-jchan)
-			c.JSON(http.StatusOK, Auth{jwt, true})
+			c.JSON(http.StatusOK, Auth{JWT:jwt, Valid:true})
 		}else {
 			fmt.Println("Wrong pass")
 			jwt := "Invalid Password"
-			c.JSON(http.StatusForbidden, Auth{jwt, false})
+			c.JSON(http.StatusForbidden, Auth{JWT: jwt, Valid:false})
 		}
 	})
 

@@ -37,10 +37,9 @@ func Pbkdf2(s string)(hash string) {
 }
 
 // CheckPass checks the password return true if correct
-// TODO: Change to Pbkdf2
 func CheckPass(pass *Password, hash string)(t bool){
 	// passHash := Sha256(pass.Password)
-	fmt.Println("func CheckPass:hash:", hash)
+	// fmt.Println("func CheckPass:hash:", hash)
 	passParts := strings.Split(hash, ":")
 	passhash,_ :=base64.StdEncoding.DecodeString(passParts[1])
 	salt, _:= base64.StdEncoding.DecodeString(passParts[0])
