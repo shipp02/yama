@@ -31,8 +31,7 @@ func setupRouter() *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 
-	r.GET("/users/:name",
-		func(c *gin.Context) {
+	userDetails:=func(c *gin.Context) {
 			user := c.Params.ByName("name")
 			// fmt.Println(user)
 			var u = new(User)
@@ -41,26 +40,28 @@ func setupRouter() *gin.Engine {
 			du:=u.ToUDetails()
 			du.SetLink("self", c.Request.URL.String(), "")
 			c.JSON(http.StatusOK, du) 
-		})
-
-	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
-		"foo":  "bar", // user:foo password:bar
-		"manu": "123", // user:manu password:123
-	}))
-
-	authorized.POST("/admin", func(c *gin.Context) {
-
-		// Parse JSON
-		var json struct {
-			Value string `json:"value" binding:"required"`
 		}
 
-		if c.Bind(&json) == nil {
-			c.JSON(http.StatusOK, gin.H{"status": "ok"})
-		}
-	})
+	r.GET("/users/:name", userDetails)
 
-	r.POST("/users/:name/login", func(c *gin.Context) {
+	authenticated := r.Group("/")
+	JWTAuth:=func (c *gin.Context)  {
+		strjwt:=c.Request.Header.Get("X-Auth-Key")	
+		log.Println("JWTAUTH", strjwt)
+		fmt.Println("JWTAUTH ran")
+		if CheckJWT(strjwt){
+		} else {
+			c.JSON(http.StatusForbidden, gin.H{"Cease":"Desist"})
+			c.Abort()
+		}
+	}
+	authenticated.Use(JWTAuth)
+	{
+		authenticated.GET("/u/:name", userDetails)
+	}
+
+
+	r.POST("/u/:name/login", func(c *gin.Context) {
 		name := c.Params.ByName("name")
 		var u = new(User)
 		u.Name = name
@@ -74,10 +75,9 @@ func setupRouter() *gin.Engine {
 		p := ToPassword(body)
 		if CheckPass(p, u.PasswordHash){
 			fmt.Println("Same guy")
-			jchan:= make(chan []byte)
+			jchan:= make(chan string)
 			go u.GetJWT(&jchan)
-			jwt:= string(<-jchan)
-			c.JSON(http.StatusOK, Auth{JWT:jwt, Valid:true})
+			c.JSON(http.StatusOK, Auth{JWT:<-jchan, Valid:true})
 		}else {
 			fmt.Println("Wrong pass")
 			jwt := "Invalid Password"
