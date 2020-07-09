@@ -19,7 +19,7 @@ type User struct {
 	Name         string
 	Username     string
 	PasswordHash string
-	JWT			 string
+	JWT          string
 	// groups []Group
 	permissions []int
 }
@@ -61,7 +61,7 @@ func (qu *queryUser) ToUser() (u *User) {
 // CleanUp removes tables after tests
 func CleanUp(db *sqlx.DB) {
 	db.MustExec("DROP TABLE users")
-	db.Close()
+	_ = db.Close()
 }
 
 // Connect connects to my database
@@ -75,9 +75,9 @@ func Connect() (db *sqlx.DB) {
 
 // GetUser filled in from database
 func GetUser(db *sqlx.DB, pu *User) (*User, error) {
-	var error error
+	var err2 error
 	if pu.Id == 0 && pu.Name == "" && pu.Username == "" {
-		error = errors.New("Insufficient data")
+		err2 = errors.New("Insufficient data")
 	}
 	var query = `
 	SELECT id, name, username, password_hash
@@ -91,16 +91,15 @@ func GetUser(db *sqlx.DB, pu *User) (*User, error) {
 	if pu.Id != 0 {
 		where = strings.Replace(idQ, "$(ID)", strconv.FormatInt(pu.Id, 10), 1)
 	}
-	if pu.Name != "" && where == ""{
-		where= strings.Replace(nameQ, "$(NAME)", pu.Name, 1)
+	if pu.Name != "" && where == "" {
+		where = strings.Replace(nameQ, "$(NAME)", pu.Name, 1)
 	}
-	if pu.Username != "" && where == ""{
-		where= strings.Replace(usernameQ, "$(UNAME)", pu.Username, 1)
+	if pu.Username != "" && where == "" {
+		where = strings.Replace(usernameQ, "$(UNAME)", pu.Username, 1)
 	}
-	resp, err := db.Query(query+where)
+	resp, err := db.Query(query + where)
 	if err != nil {
 		log.Fatal("Query Unsatisfied" + query + "\n" + err.Error())
-		error = errors.New("Query Unsatisfied" + query + "\n" + err.Error())
 	}
 	l, err := resp.Columns()
 	if err != nil {
@@ -112,51 +111,37 @@ func GetUser(db *sqlx.DB, pu *User) (*User, error) {
 	for resp.Next() {
 		if err := resp.Scan(s...); err != nil {
 			log.Fatal(err)
-			error = errors.New(err.Error())
 		}
 	}
 
 	if qu.passwordHash.String == "" {
-		error = errors.New("Could not find user")
+		err2 = errors.New("Could not find user")
 	}
-	return qu.ToUser(), error
+	return qu.ToUser(), err2
 }
 
 // CreateUser creates an entry for User in database
 func (u User) CreateUser(db *sqlx.DB) error {
 	var pu = new(User)
-	var error error
+	var err2 error
 	pu.Username = u.Username
 	pu, err := GetUser(db, pu)
 	if err == nil {
-		error = errors.New("User already exists")
+		err2 = errors.New("User already exists")
 	}
 	if u.Name == "" || u.Username == "" || u.PasswordHash == "" {
-		error = errors.New("User incomplete")
+		err2 = errors.New("User incomplete")
 	}
-	if error == nil {
-		var execu = "INSERT INTO users (username, name, password_hash) VALUES(\"$(UNAME)\", \"$(NAME)\", SHA2(\"$(PASS)\",256))"
+	if err2 == nil {
+		//var execu = "INSERT INTO users (username, name, password_hash) VALUES(\"$(UNAME)\", \"$(NAME)\", SHA2(\"$(PASS)\",256))"
 		var exec = "INSERT INTO users (username, name, password_hash) VALUES(\"%s\", \"%s\", \"%s\")"
 		exec = fmt.Sprintf(exec, u.Username, u.Name, Pbkdf2(u.PasswordHash))
-		execu = strings.Replace(execu, "$(UNAME)", u.Username, 1)
-		execu = strings.Replace(execu, "$(PASS)", u.PasswordHash, 1)
-		execu = strings.Replace(execu, "$(NAME)", u.Name, 1)
+		//execu = strings.Replace(execu, "$(UNAME)", u.Username, 1)
+		//execu = strings.Replace(execu, "$(PASS)", u.PasswordHash, 1)
+		//execu = strings.Replace(execu, "$(NAME)", u.Name, 1)
 		db.MustExec(exec)
 	}
-	return error
-}
-
-// Authenticate checks password against database
-func (u *User) Authenticate(db *sqlx.DB) (permission bool) {
-	// pu, err := GetUser(db, u)
-	// if err != nil {
-	// 	log.Println(err.Error())
-	// }
-	// if CheckPass("FireFace", pu.PasswordHash) {
-	// 	fmt.Println("Same guy")
-	// 	return true
-	// }
-	return false
+	return err2
 }
 
 func run() {
@@ -166,11 +151,11 @@ func run() {
 
 	var pu *User = new(User)
 	pu.Id = 100
-	pu, error := GetUser(db, pu)
-	if error != nil {
-		fmt.Println(error.Error())
+	pu, err := GetUser(db, pu)
+	if err != nil {
+		fmt.Println(err.Error())
 	}
-	db.Close()
+	_ = db.Close()
 }
 
 func run2() {
@@ -180,10 +165,10 @@ func run2() {
 	u.Username = "Devi"
 	u.PasswordHash = "KALI MA"
 	err := u.CreateUser(db)
-	if err !=nil{
+	if err != nil {
 		fmt.Println(err)
 	}
-	db.Close()
+	_ = db.Close()
 }
 
 // DummyUsers creates dummy users for use in testing
@@ -193,26 +178,41 @@ func DummyUsers(db *sqlx.DB) {
 	u1.Name = "George"
 	u1.Username = "210978"
 	u1.PasswordHash = "Hkis210978"
-	u1.CreateUser(db)
+	_ = u1.CreateUser(db)
 	u2 := new(User)
 	u2.Name = "John"
 	u2.Username = "teacher"
 	u2.PasswordHash = "Yes,papa!"
-	u2.CreateUser(db)
+	_ = u2.CreateUser(db)
 
 	db.MustExec(PostSchema)
 	p := new(Post)
 	p.OwnerID = 1
 	p.Text = "George posts"
-	p.CreatePost(db)
-	p.CreatePost(db)
+	_ = p.CreatePost(db)
+	_ = p.CreatePost(db)
 
 	u1, err := GetUser(db, u1)
-	_,err = u1.GetPosts(db)
-	if err!=nil{
+	_, err = u1.GetPosts(db)
+	if err != nil {
 		fmt.Println(err)
 	}
+	db.MustExec(NodeSchema)
+	n := new(Node)
+	n.Name.String = "ROOT"
+	n.ParentID.Int64 = -1
+	n.Children.Bool = true
+	err = n.CreateNode(db)
+	if err != nil {
+		log.Println(err)
+	}
 
+	nq := new(Node)
+	nq.ID.Int64 = 1
+	nq, err = nq.GetNode(db)
+	if err != nil {
+		log.Fatal(err)
+	}
 	// db.MustExec(GroupSchema)
 	// db.MustExec(GroupUserSchema)
 }
@@ -227,5 +227,5 @@ func mainE() {
 	user, _ := GetUser(db, pu)
 	fmt.Println(user)
 	// CleanUp(db)
-	db.Close()
+	_ = db.Close()
 }

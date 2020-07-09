@@ -31,35 +31,22 @@ func setupRouter() *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 
-	userDetails:=func(c *gin.Context) {
-			user := c.Params.ByName("name")
-			// fmt.Println(user)
-			var u = new(User)
-			u.Name = user
-			u, _ = GetUser(db, u)
-			du:=u.ToUDetails()
-			du.SetLink("self", c.Request.URL.String(), "")
-			c.JSON(http.StatusOK, du) 
-		}
-
-	r.GET("/users/:name", userDetails)
+	userDetails := func(c *gin.Context) {
+		user := c.Params.ByName("name")
+		// fmt.Println(user)
+		var u = new(User)
+		u.Name = user
+		u, _ = GetUser(db, u)
+		du := u.ToUDetails()
+		du.SetLink("self", c.Request.URL.String(), "")
+		c.JSON(http.StatusOK, du)
+	}
 
 	authenticated := r.Group("/")
-	JWTAuth:=func (c *gin.Context)  {
-		strjwt:=c.Request.Header.Get("X-Auth-Key")	
-		log.Println("JWTAUTH", strjwt)
-		fmt.Println("JWTAUTH ran")
-		if CheckJWT(strjwt){
-		} else {
-			c.JSON(http.StatusForbidden, gin.H{"Cease":"Desist"})
-			c.Abort()
-		}
-	}
 	authenticated.Use(JWTAuth)
 	{
 		authenticated.GET("/u/:name", userDetails)
 	}
-
 
 	r.POST("/u/:name/login", func(c *gin.Context) {
 		name := c.Params.ByName("name")
@@ -73,15 +60,15 @@ func setupRouter() *gin.Engine {
 		body := make([]byte, length)
 		length, _ = c.Request.Body.Read(body)
 		p := ToPassword(body)
-		if CheckPass(p, u.PasswordHash){
+		if CheckPass(p, u.PasswordHash) {
 			fmt.Println("Same guy")
-			jchan:= make(chan string)
+			jchan := make(chan string)
 			go u.GetJWT(&jchan)
-			c.JSON(http.StatusOK, Auth{JWT:<-jchan, Valid:true})
-		}else {
+			c.JSON(http.StatusOK, Auth{JWT: <-jchan, Valid: true})
+		} else {
 			fmt.Println("Wrong pass")
 			jwt := "Invalid Password"
-			c.JSON(http.StatusForbidden, Auth{JWT: jwt, Valid:false})
+			c.JSON(http.StatusForbidden, Auth{JWT: jwt, Valid: false})
 		}
 	})
 

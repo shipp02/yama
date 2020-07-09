@@ -66,7 +66,7 @@ func GetPost(db *sqlx.DB, p *Post) (*Post, error) {
 	var oidQ = "WHERE owner_id=$(OID)"
 
 	if p.ID == 0 && p.OwnerID == 0 {
-		err = errors.New("Insufficient data")
+		err = errors.New("insufficient data")
 	}
 
 	var where string
@@ -88,7 +88,7 @@ func GetPost(db *sqlx.DB, p *Post) (*Post, error) {
 	for resp.Next() {
 		if err := resp.Scan(is...); err != nil {
 			log.Fatal(err)
-			err = errors.New(err.Error())
+			//err = errors.New(err.Error())
 		}
 		// fmt.Println(is...)
 	}
@@ -99,7 +99,7 @@ func GetPost(db *sqlx.DB, p *Post) (*Post, error) {
 }
 
 // GetPosts gets all posts of a user
-func (u *User) GetPosts(db *sqlx.DB) ([]Post, error){
+func (u *User) GetPosts(db *sqlx.DB) ([]Post, error) {
 	var err error
 	posts := []Post{}
 	query := `
@@ -108,9 +108,9 @@ func (u *User) GetPosts(db *sqlx.DB) ([]Post, error){
 	`
 	query = strings.Replace(query, "$(OID)", strconv.FormatInt(u.Id, 10), 1)
 	// fmt.Println(query)
-	erro:=db.Select(&posts, query)
-	if erro != nil{
-		fmt.Println(erro)
+	err2 := db.Select(&posts, query)
+	if err2 != nil {
+		fmt.Println(err2)
 	}
 	// fmt.Println(posts)
 	return posts, err
@@ -121,7 +121,7 @@ func (p *Post) CreatePost(db *sqlx.DB) error {
 	var err error
 	qp, _ := GetPost(db, p)
 	if qp.ID != 0 {
-		err = errors.New("Post exists")
+		err = errors.New("post exists")
 	}
 
 	var exec = "INSERT INTO posts (owner_id, text) VALUES($(OID), \"$(TEXT)\")"
@@ -137,12 +137,12 @@ func (p *Post) CreatePost(db *sqlx.DB) error {
 func mainP() {
 	db := Connect()
 	db.MustExec(PostSchema)
-	db.MustExec("INSERT INTO posts (owner, text) VALUES(20, \"NEW POST EH\")")
-	db.MustExec("INSERT INTO posts (owner, text) VALUES(21, \"another one EH\")")
+	db.MustExec("INSERT INTO posts (owner_id, text) VALUES(20, \"NEW POST EH\")")
+	db.MustExec("INSERT INTO posts (owner_id, text) VALUES(21, \"another one EH\")")
 	p := new(Post)
 	p.OwnerID = 10
 	p.Text = "New method eh"
-	p.CreatePost(db)
+	_ = p.CreatePost(db)
 
 	p.OwnerID = 10
 	p, _ = GetPost(db, p)
