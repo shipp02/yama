@@ -1,12 +1,10 @@
 package main
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/nvellon/hal"
 	"log"
-	"strconv"
 	"strings"
 
 	"../resources/test/model"
@@ -40,40 +38,6 @@ func (m mUsers) GetMap() hal.Entry {
 	}
 }
 
-const userSchema = `
-CREATE TABLE users (
-	id int NOT NULL AUTO_INCREMENT,
-	name VARCHAR(50) NOT NULL ,
-	username VARCHAR(100) NOT NULL ,
-	password_hash VARCHAR(373) NOT NULL,
-	PRIMARY KEY (id)
-)`
-
-type queryUser struct {
-	id           sql.NullInt64
-	name         sql.NullString
-	username     sql.NullString
-	passwordHash sql.NullString
-}
-
-func (qu *queryUser) GetInterface(l int) (iface []interface{}) {
-	iface = make([]interface{}, l)
-	iface[0] = &qu.id
-	iface[1] = &qu.name
-	iface[2] = &qu.username
-	iface[3] = &qu.passwordHash
-	return
-}
-
-func (qu *queryUser) ToUser() (u *User) {
-	u = new(User)
-	u.Id = qu.id.Int64
-	u.Name = qu.name.String
-	u.Username = qu.username.String
-	u.PasswordHash = qu.passwordHash.String
-	return
-}
-
 // CleanUp removes tables after tests
 func CleanUp(db *sqlx.DB) {
 	db.MustExec("DROP TABLE users")
@@ -92,76 +56,32 @@ func Connect() (db *sqlx.DB) {
 // GetUser filled in from database
 func GetUser(db *sqlx.DB, pu *User) (*User, error) {
 	var err2 error
-	jetFlag := true
 	if pu.Id == 0 && pu.Username == "" {
-		err2 = errors.New("Insufficient data")
+		err2 = errors.New("insufficient data")
 		return pu, err2
 	}
-	if jetFlag {
-		var stmt SelectStatement
-		if pu.Id != 0 {
-			stmt = SELECT(Users.AllColumns).WHERE(
-				Users.ID.EQ(Int(pu.Id)),
-			).FROM(Users).LIMIT(1)
-		} else {
-			stmt = SELECT(Users.AllColumns).
-				FROM(Users).
-				WHERE(Users.Username.EQ(String(pu.Username)))
-		}
-		dest := new(model.Users)
-		err := stmt.Query(db, dest)
-		if err != nil {
-			log.Println("func GetUser:", err)
-			log.Println(stmt.DebugSql())
-			return pu, err
-		}
-		pu.Name = dest.Name
-		pu.PasswordHash = dest.PasswordHash
-		pu.Username = dest.Username
-		log.Println("Jet ran")
-
+	var stmt SelectStatement
+	if pu.Id != 0 {
+		stmt = SELECT(Users.AllColumns).WHERE(
+			Users.ID.EQ(Int(pu.Id)),
+		).FROM(Users).LIMIT(1)
 	} else {
-		var query = `
-	SELECT id, name, username, password_hash
-	FROM users 
-	WHERE
-	`
-		const idQ = "id=$(ID)\n"
-		const nameQ = "name=\"$(NAME)\"\n"
-		const usernameQ = "username=\"$(UNAME)\"\n"
-		var where string
-		if pu.Id != 0 {
-			where = strings.Replace(idQ, "$(ID)", strconv.FormatInt(pu.Id, 10), 1)
-		}
-		if pu.Name != "" && where == "" {
-			where = strings.Replace(nameQ, "$(NAME)", pu.Name, 1)
-		}
-		if pu.Username != "" && where == "" {
-			where = strings.Replace(usernameQ, "$(UNAME)", pu.Username, 1)
-		}
-		resp, err := db.Query(query + where)
-		if err != nil {
-			log.Println(err)
-		}
-		l, err := resp.Columns()
-		if err != nil {
-			fmt.Println(err)
-		}
-		var qu *queryUser = new(queryUser)
-		var s = qu.GetInterface(len(l))
-
-		for resp.Next() {
-			if err := resp.Scan(s...); err != nil {
-				log.Println(err)
-			}
-		}
-
-		if qu.passwordHash.String == "" {
-			err2 = errors.New("Could not find user")
-		}
-		log.Println("non jet ran")
-		return qu.ToUser(), err2
+		stmt = SELECT(Users.AllColumns).
+			FROM(Users).
+			WHERE(Users.Username.EQ(String(pu.Username)))
 	}
+	dest := new(model.Users)
+	err := stmt.Query(db, dest)
+	if err != nil {
+		log.Println("func GetUser:", err)
+		log.Println(stmt.DebugSql())
+		return pu, err
+	}
+	pu.Name = dest.Name
+	pu.PasswordHash = dest.PasswordHash
+	pu.Username = dest.Username
+	log.Println("Jet ran")
+
 	return pu, err2
 }
 
@@ -211,41 +131,25 @@ func (u User) CreateUser(db *sqlx.DB) error {
 	var err error
 	jetFlag := true
 	if u.Name == "" || u.Username == "" || u.PasswordHash == "" {
-		err = errors.New("User incomplete")
+		err = errors.New("user incomplete")
 		return err
 	}
 	if uCheck := UserByUsername(u.Username, db); uCheck.ID != 0 {
 		return errors.New("user exists")
 	}
-	if jetFlag {
-		exec := Users.INSERT(
-			Users.Name,
-			Users.Username,
-			Users.PasswordHash,
-		).VALUES(
-			u.Name,
-			u.Username,
-			Pbkdf2(u.PasswordHash))
-		result, err := exec.Exec(db)
-		if err != nil {
-			log.Fatal("Create User: ", err)
-		}
-		log.Println("Create User", result)
-	} else {
-		var pu = new(User)
-		var err2 error
-		pu.Username = u.Username
-		if err2 == nil {
-			//var execu = "INSERT INTO users (username, name, password_hash) VALUES(\"$(UNAME)\", \"$(NAME)\", SHA2(\"$(PASS)\",256))"
-			var exec = "INSERT INTO users (username, name, password_hash) VALUES(\"%s\", \"%s\", \"%s\")"
-			exec = fmt.Sprintf(exec, u.Username, u.Name, Pbkdf2(u.PasswordHash))
-			//execu = strings.Replace(execu, "$(UNAME)", u.Username, 1)
-			//execu = strings.Replace(execu, "$(PASS)", u.PasswordHash, 1)
-			//execu = strings.Replace(execu, "$(NAME)", u.Name, 1)
-			db.MustExec(exec)
-		}
-		return err2
+	exec := Users.INSERT(
+		Users.Name,
+		Users.Username,
+		Users.PasswordHash,
+	).VALUES(
+		u.Name,
+		u.Username,
+		Pbkdf2(u.PasswordHash))
+	result, err := exec.Exec(db)
+	if err != nil {
+		log.Fatal("Create User: ", err)
 	}
+	log.Println("Create User", result)
 	return err
 }
 
@@ -255,7 +159,7 @@ func DummyUsers(db *sqlx.DB) {
 	u1 := new(User)
 	u1.Name = "George"
 	u1.Username = "210978"
-	u1.PasswordHash = "Hkis210978"
+	u1.PasswordHash = "hkis210978"
 	err := u1.CreateUser(db)
 	if err != nil {
 		log.Fatal(err)

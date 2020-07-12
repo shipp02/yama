@@ -9,13 +9,13 @@ import (
 )
 
 // Password is used for authentication
-type Password struct{
-	Password string	
+type Password struct {
+	Password string
 }
 
 type Auth struct {
 	jsonhal.Hal
-	JWT string
+	JWT   string
 	Valid bool
 }
 
@@ -24,20 +24,23 @@ type Auth struct {
 // 	return
 // }
 
-func ToPassword(data []byte) (pass *Password){
+func ToPassword(data []byte) (pass *Password) {
 	pass = new(Password)
-	json.Unmarshal(data, pass)
+	err := json.Unmarshal(data, pass)
+	if err != nil {
+		return nil
+	}
 	return
 }
 
 type UDetails struct {
 	jsonhal.Hal
-	ID int64
-	Name string
+	ID       int64
+	Name     string
 	Username string
 }
 
-func (u *User) ToUDetails() (*UDetails){
-	ud:= UDetails{ID:u.Id, Name:u.Name, Username: u.Username}
+func (u *User) ToUDetails() *UDetails {
+	ud := UDetails{ID: u.Id, Name: u.Name, Username: u.Username}
 	return &ud
 }
