@@ -111,6 +111,7 @@ func GetUser(db *sqlx.DB, pu *User) (*User, error) {
 		dest := new(model.Users)
 		err := stmt.Query(db, dest)
 		if err != nil {
+			log.Println("func GetUser:", err)
 			log.Println(stmt.DebugSql())
 			return pu, err
 		}
@@ -175,6 +176,7 @@ func UserByID(id int64, db *sqlx.DB) *mUsers {
 	dest := new(mUsers)
 	err := stmt.Query(db, dest)
 	if err != nil {
+		log.Println("func UserByID:", err)
 		log.Println(stmt.DebugSql())
 		return dest
 	}
@@ -192,8 +194,13 @@ func UserByUsername(username string, db *sqlx.DB) *mUsers {
 	dest := new(mUsers)
 	err := stmt.Query(db, dest)
 	if err != nil {
-		log.Println(stmt.DebugSql())
-		return dest
+		if strings.Contains(err.Error(), "qrm: no rows in result set") {
+			return dest
+		} else {
+			log.Println("func UserByUsername:", err)
+			log.Println(stmt.DebugSql())
+			return dest
+		}
 	}
 	log.Println(*dest)
 	return dest
@@ -201,26 +208,45 @@ func UserByUsername(username string, db *sqlx.DB) *mUsers {
 
 // CreateUser creates an entry for User in database
 func (u User) CreateUser(db *sqlx.DB) error {
-	var pu = new(User)
-	var err2 error
-	pu.Username = u.Username
-	pu, err := GetUser(db, pu)
-	if err == nil {
-		err2 = errors.New("User already exists")
-	}
+	var err error
+	jetFlag := true
 	if u.Name == "" || u.Username == "" || u.PasswordHash == "" {
-		err2 = errors.New("User incomplete")
+		err = errors.New("User incomplete")
+		return err
 	}
-	if err2 == nil {
-		//var execu = "INSERT INTO users (username, name, password_hash) VALUES(\"$(UNAME)\", \"$(NAME)\", SHA2(\"$(PASS)\",256))"
-		var exec = "INSERT INTO users (username, name, password_hash) VALUES(\"%s\", \"%s\", \"%s\")"
-		exec = fmt.Sprintf(exec, u.Username, u.Name, Pbkdf2(u.PasswordHash))
-		//execu = strings.Replace(execu, "$(UNAME)", u.Username, 1)
-		//execu = strings.Replace(execu, "$(PASS)", u.PasswordHash, 1)
-		//execu = strings.Replace(execu, "$(NAME)", u.Name, 1)
-		db.MustExec(exec)
+	if uCheck := UserByUsername(u.Username, db); uCheck.ID != 0 {
+		return errors.New("user exists")
 	}
-	return err2
+	if jetFlag {
+		exec := Users.INSERT(
+			Users.Name,
+			Users.Username,
+			Users.PasswordHash,
+		).VALUES(
+			u.Name,
+			u.Username,
+			Pbkdf2(u.PasswordHash))
+		result, err := exec.Exec(db)
+		if err != nil {
+			log.Fatal("Create User: ", err)
+		}
+		log.Println("Create User", result)
+	} else {
+		var pu = new(User)
+		var err2 error
+		pu.Username = u.Username
+		if err2 == nil {
+			//var execu = "INSERT INTO users (username, name, password_hash) VALUES(\"$(UNAME)\", \"$(NAME)\", SHA2(\"$(PASS)\",256))"
+			var exec = "INSERT INTO users (username, name, password_hash) VALUES(\"%s\", \"%s\", \"%s\")"
+			exec = fmt.Sprintf(exec, u.Username, u.Name, Pbkdf2(u.PasswordHash))
+			//execu = strings.Replace(execu, "$(UNAME)", u.Username, 1)
+			//execu = strings.Replace(execu, "$(PASS)", u.PasswordHash, 1)
+			//execu = strings.Replace(execu, "$(NAME)", u.Name, 1)
+			db.MustExec(exec)
+		}
+		return err2
+	}
+	return err
 }
 
 // DummyUsers creates dummy users for use in testing
@@ -230,12 +256,18 @@ func DummyUsers(db *sqlx.DB) {
 	u1.Name = "George"
 	u1.Username = "210978"
 	u1.PasswordHash = "Hkis210978"
-	_ = u1.CreateUser(db)
+	err := u1.CreateUser(db)
+	if err != nil {
+		log.Fatal(err)
+	}
 	u2 := new(User)
 	u2.Name = "John"
 	u2.Username = "teacher"
 	u2.PasswordHash = "Yes,papa!"
-	_ = u2.CreateUser(db)
+	err = u2.CreateUser(db)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	//db.MustExec(PostSchema)
 	p := new(Post)
@@ -244,7 +276,7 @@ func DummyUsers(db *sqlx.DB) {
 	_ = p.CreatePost(db)
 	_ = p.CreatePost(db)
 
-	u1, err := GetUser(db, u1)
+	u1, err = GetUser(db, u1)
 	_, err = u1.GetPosts(db)
 	if err != nil {
 		fmt.Println(err)
