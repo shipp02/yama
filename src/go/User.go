@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"github.com/nvellon/hal"
 	"log"
 	"strings"
@@ -15,7 +14,7 @@ import (
 	. "github.com/go-jet/jet/v2/mysql"
 )
 
-var jetFlag = false
+//var jetFlag = false
 
 // User Represents user of application
 type User struct {
@@ -46,7 +45,7 @@ func CleanUp(db *sqlx.DB) {
 
 // Connect connects to my database
 func Connect() (db *sqlx.DB) {
-	db, err := sqlx.Connect("mysql", "root:yoursql@tcp(localhost:3306)/test")
+	db, err := sqlx.Connect("mysql", "root:yousql@tcp(127.0.0.1:3306)/test")
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -127,14 +126,13 @@ func UserByUsername(username string, db *sqlx.DB) *mUsers {
 }
 
 // CreateUser creates an entry for User in database
-func (u User) CreateUser(db *sqlx.DB) error {
+func (m *mUsers) CreateUser(db *sqlx.DB) error {
 	var err error
-	jetFlag := true
-	if u.Name == "" || u.Username == "" || u.PasswordHash == "" {
+	if m.Name == "" || m.Username == "" || m.PasswordHash == "" {
 		err = errors.New("user incomplete")
 		return err
 	}
-	if uCheck := UserByUsername(u.Username, db); uCheck.ID != 0 {
+	if uCheck := UserByUsername(m.Username, db); uCheck.ID != 0 {
 		return errors.New("user exists")
 	}
 	exec := Users.INSERT(
@@ -142,9 +140,10 @@ func (u User) CreateUser(db *sqlx.DB) error {
 		Users.Username,
 		Users.PasswordHash,
 	).VALUES(
-		u.Name,
-		u.Username,
-		Pbkdf2(u.PasswordHash))
+		m.Name,
+		m.Username,
+		Pbkdf2(m.PasswordHash))
+	log.Println(exec.DebugSql())
 	result, err := exec.Exec(db)
 	if err != nil {
 		log.Fatal("Create User: ", err)
@@ -156,7 +155,7 @@ func (u User) CreateUser(db *sqlx.DB) error {
 // DummyUsers creates dummy users for use in testing
 func DummyUsers(db *sqlx.DB) {
 	//db.MustExec(userSchema)
-	u1 := new(User)
+	u1 := new(mUsers)
 	u1.Name = "George"
 	u1.Username = "210978"
 	u1.PasswordHash = "hkis210978"
@@ -164,7 +163,7 @@ func DummyUsers(db *sqlx.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	u2 := new(User)
+	u2 := new(mUsers)
 	u2.Name = "John"
 	u2.Username = "teacher"
 	u2.PasswordHash = "Yes,papa!"
@@ -180,11 +179,7 @@ func DummyUsers(db *sqlx.DB) {
 	_ = p.CreatePost(db)
 	_ = p.CreatePost(db)
 
-	u1, err = GetUser(db, u1)
-	_, err = u1.GetPosts(db)
-	if err != nil {
-		fmt.Println(err)
-	}
+	//_, err = u1.GetPosts(db)
 	//db.MustExec(NodeSchema)
 	//n := new(Node)
 	//n.Name.String = "ROOT"

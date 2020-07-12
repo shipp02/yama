@@ -47,13 +47,12 @@ func setupRouter() *gin.Engine {
 
 	r.POST("/u/:username/login", func(c *gin.Context) {
 		u := UserByUsername(c.Params.ByName("username"), db)
-		length, err := strconv.Atoi(c.Request.Header.Get("Content-Length"))
+		//length, err := strconv.Atoi(c.Request.Header.Get("Content-Length"))
+		var p = new(Password)
+		err := c.BindJSON(p)
 		if err != nil {
 			log.Fatal(err)
 		}
-		body := make([]byte, length)
-		length, _ = c.Request.Body.Read(body)
-		p := ToPassword(body)
 		if CheckPass(p, u.PasswordHash) {
 			fmt.Println("Same guy")
 			jChan := make(chan string)
@@ -65,6 +64,26 @@ func setupRouter() *gin.Engine {
 			c.JSON(http.StatusForbidden, Auth{JWT: jwt, Valid: false})
 		}
 	})
+
+	createUser := func(c *gin.Context) {
+		log.Println(":func createUser ran")
+		val := new(mUsers)
+		err := c.BindJSON(val)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, err)
+			log.Fatal(err)
+			return
+		}
+		log.Println("func createUser", val)
+		err = val.CreateUser(db)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, err)
+			log.Fatal(err)
+			return
+		}
+		c.JSON(http.StatusAccepted, val)
+	}
+	r.POST("/edit/u/create", createUser)
 
 	return r
 }
