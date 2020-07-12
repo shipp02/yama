@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"github.com/nvellon/hal"
+
 	// "encoding/json"
 	"fmt"
 	"log"
@@ -13,7 +15,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	// hal "github.com/RichardKnop/jsonhal"
 )
 
 const (
@@ -32,27 +33,20 @@ func setupRouter() *gin.Engine {
 	})
 
 	userDetails := func(c *gin.Context) {
-		user := c.Params.ByName("name")
+		var u = UserByUsername(c.Params.ByName("username"), db)
 		// fmt.Println(user)
-		var u = new(User)
-		u.Name = user
-		u, _ = GetUser(db, u)
-		du := u.ToUDetails()
-		du.SetLink("self", c.Request.URL.String(), "")
-		c.JSON(http.StatusOK, du)
+		ur := hal.NewResource(u, c.Request.URL.String())
+		c.JSON(http.StatusOK, ur)
 	}
 
 	authenticated := r.Group("/")
 	authenticated.Use(JWTAuth)
 	{
-		authenticated.GET("/u/:name", userDetails)
+		authenticated.GET("/u/:username", userDetails)
 	}
 
-	r.POST("/u/:name/login", func(c *gin.Context) {
-		name := c.Params.ByName("name")
-		var u = new(User)
-		u.Name = name
-		u, _ = GetUser(db, u)
+	r.POST("/u/:username/login", func(c *gin.Context) {
+		u := UserByUsername(c.Params.ByName("username"), db)
 		length, err := strconv.Atoi(c.Request.Header.Get("Content-Length"))
 		if err != nil {
 			log.Fatal(err)

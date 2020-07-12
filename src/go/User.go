@@ -4,14 +4,20 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/nvellon/hal"
 	"log"
 	"strconv"
 	"strings"
 
+	"../resources/test/model"
+	. "../resources/test/table"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	// pass "./password"
+	. "github.com/go-jet/jet/v2/mysql"
 )
+
+var jetFlag = false
 
 // User Represents user of application
 type User struct {
@@ -22,6 +28,16 @@ type User struct {
 	JWT          string
 	// groups []Group
 	permissions []int
+}
+
+type mUsers model.Users
+
+func (m mUsers) GetMap() hal.Entry {
+	return hal.Entry{
+		"id":       m.ID,
+		"name":     m.Name,
+		"username": m.Username,
+	}
 }
 
 const userSchema = `
@@ -66,7 +82,7 @@ func CleanUp(db *sqlx.DB) {
 
 // Connect connects to my database
 func Connect() (db *sqlx.DB) {
-	db, err := sqlx.Connect("mysql", "root:yoursql@tcp(localhost:3306)/mysql")
+	db, err := sqlx.Connect("mysql", "root:yoursql@tcp(localhost:3306)/test")
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -76,48 +92,111 @@ func Connect() (db *sqlx.DB) {
 // GetUser filled in from database
 func GetUser(db *sqlx.DB, pu *User) (*User, error) {
 	var err2 error
-	if pu.Id == 0 && pu.Name == "" && pu.Username == "" {
+	jetFlag := true
+	if pu.Id == 0 && pu.Username == "" {
 		err2 = errors.New("Insufficient data")
+		return pu, err2
 	}
-	var query = `
+	if jetFlag {
+		var stmt SelectStatement
+		if pu.Id != 0 {
+			stmt = SELECT(Users.AllColumns).WHERE(
+				Users.ID.EQ(Int(pu.Id)),
+			).FROM(Users).LIMIT(1)
+		} else {
+			stmt = SELECT(Users.AllColumns).
+				FROM(Users).
+				WHERE(Users.Username.EQ(String(pu.Username)))
+		}
+		dest := new(model.Users)
+		err := stmt.Query(db, dest)
+		if err != nil {
+			log.Println(stmt.DebugSql())
+			return pu, err
+		}
+		pu.Name = dest.Name
+		pu.PasswordHash = dest.PasswordHash
+		pu.Username = dest.Username
+		log.Println("Jet ran")
+
+	} else {
+		var query = `
 	SELECT id, name, username, password_hash
 	FROM users 
 	WHERE
 	`
-	const idQ = "id=$(ID)\n"
-	const nameQ = "name=\"$(NAME)\"\n"
-	const usernameQ = "username=\"$(UNAME)\"\n"
-	var where string
-	if pu.Id != 0 {
-		where = strings.Replace(idQ, "$(ID)", strconv.FormatInt(pu.Id, 10), 1)
-	}
-	if pu.Name != "" && where == "" {
-		where = strings.Replace(nameQ, "$(NAME)", pu.Name, 1)
-	}
-	if pu.Username != "" && where == "" {
-		where = strings.Replace(usernameQ, "$(UNAME)", pu.Username, 1)
-	}
-	resp, err := db.Query(query + where)
-	if err != nil {
-		log.Fatal("Query Unsatisfied" + query + "\n" + err.Error())
-	}
-	l, err := resp.Columns()
-	if err != nil {
-		fmt.Println(err)
-	}
-	var qu *queryUser = new(queryUser)
-	var s = qu.GetInterface(len(l))
-
-	for resp.Next() {
-		if err := resp.Scan(s...); err != nil {
-			log.Fatal(err)
+		const idQ = "id=$(ID)\n"
+		const nameQ = "name=\"$(NAME)\"\n"
+		const usernameQ = "username=\"$(UNAME)\"\n"
+		var where string
+		if pu.Id != 0 {
+			where = strings.Replace(idQ, "$(ID)", strconv.FormatInt(pu.Id, 10), 1)
 		}
-	}
+		if pu.Name != "" && where == "" {
+			where = strings.Replace(nameQ, "$(NAME)", pu.Name, 1)
+		}
+		if pu.Username != "" && where == "" {
+			where = strings.Replace(usernameQ, "$(UNAME)", pu.Username, 1)
+		}
+		resp, err := db.Query(query + where)
+		if err != nil {
+			log.Println(err)
+		}
+		l, err := resp.Columns()
+		if err != nil {
+			fmt.Println(err)
+		}
+		var qu *queryUser = new(queryUser)
+		var s = qu.GetInterface(len(l))
 
-	if qu.passwordHash.String == "" {
-		err2 = errors.New("Could not find user")
+		for resp.Next() {
+			if err := resp.Scan(s...); err != nil {
+				log.Println(err)
+			}
+		}
+
+		if qu.passwordHash.String == "" {
+			err2 = errors.New("Could not find user")
+		}
+		log.Println("non jet ran")
+		return qu.ToUser(), err2
 	}
-	return qu.ToUser(), err2
+	return pu, err2
+}
+
+func UserByID(id int64, db *sqlx.DB) *mUsers {
+	stmt := SELECT(Users.ID.AS("mUsers.id"),
+		Users.Name.AS("mUsers.name"),
+		Users.Username.AS("mUsers.username"),
+		Users.PasswordHash.AS("mUsers.PasswordHash")).
+		FROM(Users).
+		WHERE(Users.ID.EQ(Int(id)))
+
+	dest := new(mUsers)
+	err := stmt.Query(db, dest)
+	if err != nil {
+		log.Println(stmt.DebugSql())
+		return dest
+	}
+	return dest
+}
+
+func UserByUsername(username string, db *sqlx.DB) *mUsers {
+	stmt := SELECT(Users.ID.AS("mUsers.id"),
+		Users.Name.AS("mUsers.name"),
+		Users.Username.AS("mUsers.username"),
+		Users.PasswordHash.AS("mUsers.PasswordHash")).
+		FROM(Users).
+		WHERE(Users.Username.EQ(String(username)))
+
+	dest := new(mUsers)
+	err := stmt.Query(db, dest)
+	if err != nil {
+		log.Println(stmt.DebugSql())
+		return dest
+	}
+	log.Println(*dest)
+	return dest
 }
 
 // CreateUser creates an entry for User in database
@@ -144,36 +223,9 @@ func (u User) CreateUser(db *sqlx.DB) error {
 	return err2
 }
 
-func run() {
-	db := Connect()
-	db.MustExec("USE  mysql")
-	db.MustExec(userSchema)
-
-	var pu *User = new(User)
-	pu.Id = 100
-	pu, err := GetUser(db, pu)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	_ = db.Close()
-}
-
-func run2() {
-	db := Connect()
-	var u User
-	u.Name = "Chasma"
-	u.Username = "Devi"
-	u.PasswordHash = "KALI MA"
-	err := u.CreateUser(db)
-	if err != nil {
-		fmt.Println(err)
-	}
-	_ = db.Close()
-}
-
 // DummyUsers creates dummy users for use in testing
 func DummyUsers(db *sqlx.DB) {
-	db.MustExec(userSchema)
+	//db.MustExec(userSchema)
 	u1 := new(User)
 	u1.Name = "George"
 	u1.Username = "210978"
@@ -185,7 +237,7 @@ func DummyUsers(db *sqlx.DB) {
 	u2.PasswordHash = "Yes,papa!"
 	_ = u2.CreateUser(db)
 
-	db.MustExec(PostSchema)
+	//db.MustExec(PostSchema)
 	p := new(Post)
 	p.OwnerID = 1
 	p.Text = "George posts"
@@ -197,35 +249,35 @@ func DummyUsers(db *sqlx.DB) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	db.MustExec(NodeSchema)
-	n := new(Node)
-	n.Name.String = "ROOT"
-	n.ParentID.Int64 = -1
-	n.Children.Bool = true
-	err = n.CreateNode(db)
-	if err != nil {
-		log.Println(err)
-	}
-
-	nq := new(Node)
-	nq.ID.Int64 = 1
-	nq, err = nq.GetNode(db)
-	if err != nil {
-		log.Fatal(err)
-	}
+	//db.MustExec(NodeSchema)
+	//n := new(Node)
+	//n.Name.String = "ROOT"
+	//n.ParentID.Int64 = -1
+	//n.Children.Bool = true
+	//err = n.CreateNode(db)
+	//if err != nil {
+	//	log.Println(err)
+	//}
+	//
+	//nq := new(Node)
+	//nq.ID.Int64 = 1
+	//nq, err = nq.GetNode(db)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 	// db.MustExec(GroupSchema)
 	// db.MustExec(GroupUserSchema)
 }
 
 func mainE() {
 	db := Connect()
-	run()
-	DummyUsers(db)
-	run2()
-	pu := new(User)
-	pu.Name = "George"
-	user, _ := GetUser(db, pu)
-	fmt.Println(user)
+	//run()
+	//DummyUsers(db)
+	//run2()
+	//pu := new(User)
+	//pu.Name = "George"
+	//user, _ := GetUser(db, pu)
+	//fmt.Println(user)
 	// CleanUp(db)
 	_ = db.Close()
 }

@@ -53,12 +53,12 @@ func CheckPass(pass *Password, hash string) (t bool) {
 	return false
 }
 
-func (u *User) GetJWT(jwtchan *chan string) {
+func (m *mUsers) GetJWT(jwtchan *chan string) {
 	conf := DefaultConfig()
 	var jc jwt.Claims
 	jc.Issuer = *conf.Issuer
-	jc.Subject = u.Username
-	jc.KeyID = u.PasswordHash
+	jc.Subject = m.Username
+	jc.KeyID = m.PasswordHash
 	jwtToken, err := jc.HMACSign(jwt.HS512, *conf.Secret)
 	if err != nil {
 		fmt.Println("GetUser jwt", err)
