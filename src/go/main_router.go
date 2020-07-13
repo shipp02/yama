@@ -45,10 +45,35 @@ func setupRouter() *gin.Engine {
 		}
 	}
 
+	var createPost gin.HandlerFunc
+	createPost = func(c *gin.Context) {
+		user := UserByUsername(c.Params.ByName("username"), db)
+		var s = struct {
+			Text string
+		}{}
+		err := c.BindJSON(&s)
+		if err != nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+		post := mPost{
+			OwnerID: user.ID,
+			Text:    &s.Text,
+		}
+		err = post.CreatePost(db)
+		if err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		c.AbortWithStatus(http.StatusOK)
+
+	}
+
 	authenticated := r.Group("/")
 	authenticated.Use(JWTAuth)
 	{
 		authenticated.GET("/u/:username", userDetails)
+		authenticated.POST("/p/:username/create", createPost)
 	}
 
 	r.POST("/u/:username/login", func(c *gin.Context) {
