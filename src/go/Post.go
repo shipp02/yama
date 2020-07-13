@@ -57,21 +57,39 @@ func GetPost(db *sqlx.DB, p *mPost) (*mPost, error) {
 }
 
 // GetPosts gets all posts of a user
-func (u *User) GetPosts(db *sqlx.DB) ([]Post, error) {
+func (u *mUsers) GetPosts(db *sqlx.DB) (*[]mPost, error) {
 	var err error
-	posts := []Post{}
-	query := `
+	jetFlag := true
+	if jetFlag {
+		var posts []mPost
+		stmt := SELECT(Posts.ID.AS("mPosts.id"),
+			Posts.OwnerID.AS("mPosts.owner_id"),
+			Posts.Text.AS("mPosts.Text")).FROM(Posts).
+			WHERE(Posts.ID.EQ(Int(int64(u.ID))))
+		err := stmt.Query(db, &posts)
+		if err != nil {
+			if strings.Contains(err.Error(), "qrm: no rows in result set") {
+				return &posts, nil
+			} else {
+				return nil, err
+			}
+		}
+		return &posts, nil
+	} else {
+		posts := []mPost{}
+		query := `
 		SELECT * FROM posts
 		WHERE owner_id=$(OID)
 	`
-	query = strings.Replace(query, "$(OID)", strconv.FormatInt(u.Id, 10), 1)
-	// fmt.Println(query)
-	err2 := db.Select(&posts, query)
-	if err2 != nil {
-		fmt.Println(err2)
+		query = strings.Replace(query, "$(OID)", strconv.FormatInt(int64(u.ID), 10), 1)
+		// fmt.Println(query)
+		err2 := db.Select(&posts, query)
+		if err2 != nil {
+			fmt.Println(err2)
+		}
+		// fmt.Println(posts)
+		return &posts, err
 	}
-	// fmt.Println(posts)
-	return posts, err
 }
 
 // CreatePost Stores the post in database
@@ -81,23 +99,12 @@ func (p *mPost) CreatePost(db *sqlx.DB) error {
 		err = errors.New("post exists")
 	}
 
-	jetFlag := true
-	if jetFlag {
-		stmt := Posts.INSERT(Posts.OwnerID, Posts.Text).VALUES(p.OwnerID, p.Text)
-		_, err := stmt.Exec(db)
-		if err != nil {
-			return err
-		}
-
-	} else {
-		var exec = "INSERT INTO posts (owner_id, text) VALUES($(OID), \"$(TEXT)\")"
-
-		exec = strings.Replace(exec, "$(OID)", strconv.FormatInt(int64(p.OwnerID), 10), 1)
-		exec = strings.Replace(exec, "$(TEXT)", *p.Text, 1)
-		// fmt.Println(exec)
-
-		db.MustExec(exec)
+	stmt := Posts.INSERT(Posts.OwnerID, Posts.Text).VALUES(p.OwnerID, p.Text)
+	_, err = stmt.Exec(db)
+	if err != nil {
+		return err
 	}
+
 	return err
 }
 

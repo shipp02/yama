@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/nvellon/hal"
 	"log"
 	"strings"
@@ -168,17 +169,15 @@ func DummyUsers(db *sqlx.DB) {
 	}
 
 	//db.MustExec(PostSchema)
-	p := new(mPost)
-	p.OwnerID = 1
-	var s = "George posts"
-	p.Text = &s
-	e := p.CreatePost(db)
-	if e != nil {
-		return
-	}
-	e = p.CreatePost(db)
-	if e != nil {
-		return
+	for i := 0; i < 10; i++ {
+		p := new(mPost)
+		p.OwnerID = 1
+		var s = fmt.Sprintf("George posts %d", i)
+		p.Text = &s
+		e := p.CreatePost(db)
+		if e != nil {
+			return
+		}
 	}
 
 	//_, err = u1.GetPosts(db)
