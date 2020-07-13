@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/nvellon/hal"
+	"strings"
 
 	// "encoding/json"
 	"fmt"
@@ -35,8 +36,13 @@ func setupRouter() *gin.Engine {
 	userDetails := func(c *gin.Context) {
 		var u = UserByUsername(c.Params.ByName("username"), db)
 		// fmt.Println(user)
-		ur := hal.NewResource(u, c.Request.URL.String())
-		c.JSON(http.StatusOK, ur)
+		if u.ID != 0 {
+			ur := hal.NewResource(u, c.Request.URL.String())
+			c.JSON(http.StatusOK, ur)
+		} else {
+			s := "user with username %s does not exist"
+			c.JSON(http.StatusOK, gin.H{"error": fmt.Sprintf(s, c.Params.ByName("username"))})
+		}
 	}
 
 	authenticated := r.Group("/")
@@ -77,11 +83,17 @@ func setupRouter() *gin.Engine {
 		log.Println("func createUser", val)
 		err = val.CreateUser(db)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, err)
-			log.Fatal(err)
+			if strings.Contains(err.Error(), "user exists") {
+				c.JSON(http.StatusOK, gin.H{"Error": "User exists"})
+				c.Abort()
+			} else {
+				c.JSON(http.StatusInternalServerError, err)
+			}
 			return
 		}
-		c.JSON(http.StatusAccepted, val)
+		jChan := make(chan string)
+		go val.GetJWT(&jChan)
+		c.JSON(http.StatusOK, Auth{JWT: <-jChan, Valid: true})
 	}
 	r.POST("/edit/u/create", createUser)
 

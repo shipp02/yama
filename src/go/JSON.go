@@ -39,8 +39,3 @@ type UDetails struct {
 	Name     string
 	Username string
 }
-
-func (u *User) ToUDetails() *UDetails {
-	ud := UDetails{ID: u.Id, Name: u.Name, Username: u.Username}
-	return &ud
-}

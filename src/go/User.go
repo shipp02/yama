@@ -14,7 +14,7 @@ import (
 	. "github.com/go-jet/jet/v2/mysql"
 )
 
-//var jetFlag = false
+var jetFlag = false
 
 // User Represents user of application
 type User struct {
@@ -53,33 +53,28 @@ func Connect() (db *sqlx.DB) {
 }
 
 // GetUser filled in from database
-func GetUser(db *sqlx.DB, pu *User) (*User, error) {
+func GetUser(db *sqlx.DB, pu *mUsers) (*mUsers, error) {
 	var err2 error
-	if pu.Id == 0 && pu.Username == "" {
+	if pu.ID == 0 && pu.Username == "" {
 		err2 = errors.New("insufficient data")
 		return pu, err2
 	}
 	var stmt SelectStatement
-	if pu.Id != 0 {
+	if pu.ID != 0 {
 		stmt = SELECT(Users.AllColumns).WHERE(
-			Users.ID.EQ(Int(pu.Id)),
+			Users.ID.EQ(Int(int64(pu.ID))),
 		).FROM(Users).LIMIT(1)
 	} else {
 		stmt = SELECT(Users.AllColumns).
 			FROM(Users).
 			WHERE(Users.Username.EQ(String(pu.Username)))
 	}
-	dest := new(model.Users)
-	err := stmt.Query(db, dest)
+	err := stmt.Query(db, pu)
 	if err != nil {
 		log.Println("func GetUser:", err)
 		log.Println(stmt.DebugSql())
 		return pu, err
 	}
-	pu.Name = dest.Name
-	pu.PasswordHash = dest.PasswordHash
-	pu.Username = dest.Username
-	log.Println("Jet ran")
 
 	return pu, err2
 }
@@ -143,7 +138,7 @@ func (m *mUsers) CreateUser(db *sqlx.DB) error {
 		m.Name,
 		m.Username,
 		Pbkdf2(m.PasswordHash))
-	log.Println(exec.DebugSql())
+	//log.Println(exec.DebugSql())
 	result, err := exec.Exec(db)
 	if err != nil {
 		log.Fatal("Create User: ", err)
@@ -173,11 +168,18 @@ func DummyUsers(db *sqlx.DB) {
 	}
 
 	//db.MustExec(PostSchema)
-	p := new(Post)
+	p := new(mPost)
 	p.OwnerID = 1
-	p.Text = "George posts"
-	_ = p.CreatePost(db)
-	_ = p.CreatePost(db)
+	var s = "George posts"
+	p.Text = &s
+	e := p.CreatePost(db)
+	if e != nil {
+		return
+	}
+	e = p.CreatePost(db)
+	if e != nil {
+		return
+	}
 
 	//_, err = u1.GetPosts(db)
 	//db.MustExec(NodeSchema)
