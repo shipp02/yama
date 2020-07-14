@@ -3,7 +3,6 @@ package main
 // This file contains structs for JSON interactions.
 
 import (
-	"github.com/RichardKnop/jsonhal"
 	"github.com/nvellon/hal"
 )
 
@@ -13,9 +12,15 @@ type Password struct {
 }
 
 type Auth struct {
-	jsonhal.Hal
 	JWT   string
 	Valid bool
+}
+
+func (auth Auth) GetMap() hal.Entry {
+	return hal.Entry{
+		"jwt":   auth.JWT,
+		"valid": auth.Valid,
+	}
 }
 
 type Response struct {

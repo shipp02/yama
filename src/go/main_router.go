@@ -106,11 +106,13 @@ func setupRouter() *gin.Engine {
 			fmt.Println("Same guy")
 			jChan := make(chan string)
 			go u.GetJWT(&jChan)
-			c.JSON(http.StatusOK, Auth{JWT: <-jChan, Valid: true})
+			authRes := hal.NewResource(Auth{JWT: <-jChan, Valid: true}, c.Request.RequestURI)
+			c.JSON(http.StatusOK, authRes)
 		} else {
 			fmt.Println("Wrong pass")
 			jwt := "Invalid Password"
-			c.JSON(http.StatusForbidden, Auth{JWT: jwt, Valid: false})
+			authRes := hal.NewResource(Auth{JWT: jwt, Valid: false}, c.Request.RequestURI)
+			c.JSON(http.StatusForbidden, authRes)
 		}
 	})
 
