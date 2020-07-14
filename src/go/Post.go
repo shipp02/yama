@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/nvellon/hal"
 	"strconv"
 	"strings"
 
@@ -13,17 +14,6 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// PostSchema Schema for posts table
-const PostSchema = `
-CREATE TABLE posts(
-	id int NOT NULL AUTO_INCREMENT,
-	owner_id int NOT NULL,
-	text TEXT,
-	PRIMARY KEY(id),
-	FOREIGN KEY (owner_id) REFERENCES users (id) 
-);
-`
-
 // Post represents a post on a message board
 type Post struct {
 	ID      int64  `db:"id"`
@@ -32,6 +22,13 @@ type Post struct {
 }
 
 type mPost model.Posts
+
+func (p mPost) GetMap() hal.Entry {
+	return hal.Entry{
+		"id":   p.ID,
+		"text": p.Text,
+	}
+}
 
 // GetPost will fetch particular post from db
 func GetPost(db *sqlx.DB, p *mPost) (*mPost, error) {
@@ -62,10 +59,10 @@ func (u *mUsers) GetPosts(db *sqlx.DB) (*[]mPost, error) {
 	jetFlag := true
 	if jetFlag {
 		var posts []mPost
-		stmt := SELECT(Posts.ID.AS("mPosts.id"),
-			Posts.OwnerID.AS("mPosts.owner_id"),
-			Posts.Text.AS("mPosts.Text")).FROM(Posts).
-			WHERE(Posts.ID.EQ(Int(int64(u.ID))))
+		stmt := SELECT(Posts.ID.AS("mPost.id"),
+			Posts.OwnerID.AS("mPost.owner_id"),
+			Posts.Text.AS("mPost.Text")).FROM(Posts).
+			WHERE(Posts.OwnerID.EQ(Int(int64(u.ID)))).LIMIT(10)
 		err := stmt.Query(db, &posts)
 		if err != nil {
 			if strings.Contains(err.Error(), "qrm: no rows in result set") {
@@ -110,7 +107,7 @@ func (p *mPost) CreatePost(db *sqlx.DB) error {
 
 func mainP() {
 	db := Connect()
-	db.MustExec(PostSchema)
+	//db.MustExec(PostSchema)
 	db.MustExec("INSERT INTO posts (owner_id, text) VALUES(20, \"NEW POST EH\")")
 	db.MustExec("INSERT INTO posts (owner_id, text) VALUES(21, \"another one EH\")")
 	p := new(mPost)

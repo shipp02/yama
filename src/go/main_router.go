@@ -33,52 +33,70 @@ func setupRouter() *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 
-	userDetails := func(c *gin.Context) {
-		var u = UserByUsername(c.Params.ByName("username"), db)
-		// fmt.Println(user)
-		if u.ID != 0 {
-			ur := hal.NewResource(u, c.Request.URL.String())
-			c.JSON(http.StatusOK, ur)
-		} else {
-			s := "user with username %s does not exist"
-			c.JSON(http.StatusOK, gin.H{"error": fmt.Sprintf(s, c.Params.ByName("username"))})
-		}
-	}
-
-	var createPost gin.HandlerFunc
-	createPost = func(c *gin.Context) {
-		user := UserByUsername(c.Params.ByName("username"), db)
-		var s = struct {
-			Text string
-		}{}
-		err := c.BindJSON(&s)
-		if err != nil {
-			c.AbortWithStatus(http.StatusBadRequest)
-			return
-		}
-		post := mPost{
-			OwnerID: user.ID,
-			Text:    &s.Text,
-		}
-		err = post.CreatePost(db)
-		if err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
-		c.AbortWithStatus(http.StatusOK)
-
-	}
-
 	authenticated := r.Group("/")
 	authenticated.Use(JWTAuth)
 	{
+		userDetails := func(c *gin.Context) {
+			var u = UserByUsername(c.Params.ByName("username"), db)
+			// fmt.Println(user)
+			if u.ID != 0 {
+				ur := hal.NewResource(u, c.Request.URL.String())
+				c.JSON(http.StatusOK, ur)
+			} else {
+				s := "user with username %s does not exist"
+				c.JSON(http.StatusOK, gin.H{"error": fmt.Sprintf(s, c.Params.ByName("username"))})
+			}
+		}
+		var createPost gin.HandlerFunc
+		createPost = func(c *gin.Context) {
+			user := UserByUsername(c.Params.ByName("username"), db)
+			var s = struct {
+				Text string
+			}{}
+			err := c.BindJSON(&s)
+			if err != nil {
+				c.AbortWithStatus(http.StatusBadRequest)
+				return
+			}
+			post := mPost{
+				OwnerID: user.ID,
+				Text:    &s.Text,
+			}
+			err = post.CreatePost(db)
+			if err != nil {
+				c.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+			c.AbortWithStatus(http.StatusOK)
+
+		}
+		var viewPosts gin.HandlerFunc
+		viewPosts = func(c *gin.Context) {
+			user := UserByUsername(c.Params.ByName("username"), db)
+			if user == nil {
+				c.AbortWithStatus(http.StatusBadRequest)
+			}
+			posts, err := user.GetPosts(db)
+			if err != nil {
+				log.Println(err)
+				c.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+			resp := hal.NewResource(Response{Length: len(*posts), Content: "posts"}, c.Request.URL.String())
+			p := *posts
+			for _, rrp := range p {
+				resp.Embedded.Add("posts", hal.NewResource(rrp, ""))
+			}
+			c.JSON(http.StatusOK, resp)
+		}
 		authenticated.GET("/u/:username", userDetails)
 		authenticated.POST("/p/:username/create", createPost)
+		authenticated.GET("/p/:username/view", viewPosts)
 	}
 
 	r.POST("/u/:username/login", func(c *gin.Context) {
 		u := UserByUsername(c.Params.ByName("username"), db)
-		//length, err := strconv.Atoi(c.Request.Header.Get("Content-Length"))
+		//Length, err := strconv.Atoi(c.Request.Header.Get("Content-Length"))
 		var p = new(Password)
 		err := c.BindJSON(p)
 		if err != nil {

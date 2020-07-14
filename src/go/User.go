@@ -30,11 +30,11 @@ type User struct {
 
 type mUsers model.Users
 
-func (m mUsers) GetMap() hal.Entry {
+func (u mUsers) GetMap() hal.Entry {
 	return hal.Entry{
-		"id":       m.ID,
-		"name":     m.Name,
-		"username": m.Username,
+		"id":       u.ID,
+		"name":     u.Name,
+		"username": u.Username,
 	}
 }
 
@@ -122,13 +122,13 @@ func UserByUsername(username string, db *sqlx.DB) *mUsers {
 }
 
 // CreateUser creates an entry for User in database
-func (m *mUsers) CreateUser(db *sqlx.DB) error {
+func (u *mUsers) CreateUser(db *sqlx.DB) error {
 	var err error
-	if m.Name == "" || m.Username == "" || m.PasswordHash == "" {
+	if u.Name == "" || u.Username == "" || u.PasswordHash == "" {
 		err = errors.New("user incomplete")
 		return err
 	}
-	if uCheck := UserByUsername(m.Username, db); uCheck.ID != 0 {
+	if uCheck := UserByUsername(u.Username, db); uCheck.ID != 0 {
 		return errors.New("user exists")
 	}
 	exec := Users.INSERT(
@@ -136,9 +136,9 @@ func (m *mUsers) CreateUser(db *sqlx.DB) error {
 		Users.Username,
 		Users.PasswordHash,
 	).VALUES(
-		m.Name,
-		m.Username,
-		Pbkdf2(m.PasswordHash))
+		u.Name,
+		u.Username,
+		Pbkdf2(u.PasswordHash))
 	//log.Println(exec.DebugSql())
 	result, err := exec.Exec(db)
 	if err != nil {
@@ -179,6 +179,7 @@ func DummyUsers(db *sqlx.DB) {
 			return
 		}
 	}
+	fmt.Println(u1.GetPosts(db))
 
 	//_, err = u1.GetPosts(db)
 	//db.MustExec(NodeSchema)
