@@ -25,10 +25,11 @@ CREATE TABLE node
     id        INTEGER      NOT NULL PRIMARY KEY AUTO_INCREMENT,
     document_id INTEGER   UNIQUE,
     name      VARCHAR(256) NOT NULL,
-    children  BOOLEAN      NOT NULL,
+    children  BOOLEAN      NOT NULL DEFAULT false,
     parent_id INTEGER      NOT NULL,
     FOREIGN KEY (document_id) REFERENCES document(id)
 );
+# SELECT id, username, name FROM users
 # -- name: GetUserByID : one
 # SELECT * FROM users
 # WHERE id = $1 LIMIT 1;

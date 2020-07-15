@@ -155,18 +155,18 @@ func DummyUsers(db *sqlx.DB) {
 	u1.Name = "George"
 	u1.Username = "210978"
 	u1.PasswordHash = "hkis210978"
-	err := u1.CreateUser(db)
-	if err != nil {
-		log.Fatal(err)
-	}
+	_ = u1.CreateUser(db)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 	u2 := new(mUsers)
 	u2.Name = "John"
 	u2.Username = "teacher"
 	u2.PasswordHash = "Yes,papa!"
-	err = u2.CreateUser(db)
-	if err != nil {
-		log.Fatal(err)
-	}
+	_ = u2.CreateUser(db)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 
 	//db.MustExec(PostSchema)
 	for i := 0; i < 10; i++ {
@@ -181,9 +181,16 @@ func DummyUsers(db *sqlx.DB) {
 	}
 	fmt.Println(u1.GetPosts(db))
 
+	var n = mNode{
+		ID: 8,
+	}
+	fmt.Println(n.GetParents(2, db))
+
+	n.ID = 5
+	fmt.Println(n.GetChildren(1, db))
 	//_, err = u1.GetPosts(db)
 	//db.MustExec(NodeSchema)
-	//n := new(Node)
+	//n := new(mNode)
 	//n.Name.String = "ROOT"
 	//n.ParentID.Int64 = -1
 	//n.Children.Bool = true
@@ -192,7 +199,7 @@ func DummyUsers(db *sqlx.DB) {
 	//	log.Println(err)
 	//}
 	//
-	//nq := new(Node)
+	//nq := new(mNode)
 	//nq.ID.Int64 = 1
 	//nq, err = nq.GetNode(db)
 	//if err != nil {
