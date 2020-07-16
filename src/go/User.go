@@ -188,6 +188,8 @@ func DummyUsers(db *sqlx.DB) {
 
 	n.ID = 5
 	fmt.Println(n.GetChildren(1, db))
+
+	n.CreateChild("child", db)
 	//_, err = u1.GetPosts(db)
 	//db.MustExec(NodeSchema)
 	//n := new(mNode)

@@ -36,7 +36,16 @@ func setupRouter() *gin.Engine {
 	authenticated := r.Group("/")
 	authenticated.Use(JWTAuth)
 	{
-		userDetails := func(c *gin.Context) {
+		var (
+			userDetails gin.HandlerFunc // Gives details of user
+			createPost  gin.HandlerFunc // Creates a post
+			viewPosts   gin.HandlerFunc // Shows all posts
+		)
+		authenticated.GET("/u/:username", userDetails)
+		authenticated.POST("/edit/u/:username/posts", createPost)
+		authenticated.GET("/u/:username/posts", viewPosts)
+
+		userDetails = func(c *gin.Context) {
 			var u = UserByUsername(c.Params.ByName("username"), db)
 			// fmt.Println(user)
 			if u.ID != 0 {
@@ -47,7 +56,6 @@ func setupRouter() *gin.Engine {
 				c.JSON(http.StatusOK, gin.H{"error": fmt.Sprintf(s, c.Params.ByName("username"))})
 			}
 		}
-		var createPost gin.HandlerFunc
 		createPost = func(c *gin.Context) {
 			user := UserByUsername(c.Params.ByName("username"), db)
 			var s = struct {
@@ -70,7 +78,6 @@ func setupRouter() *gin.Engine {
 			c.AbortWithStatus(http.StatusOK)
 
 		}
-		var viewPosts gin.HandlerFunc
 		viewPosts = func(c *gin.Context) {
 			user := UserByUsername(c.Params.ByName("username"), db)
 			if user == nil {
@@ -89,9 +96,17 @@ func setupRouter() *gin.Engine {
 			}
 			c.JSON(http.StatusOK, resp)
 		}
-		authenticated.GET("/u/:username", userDetails)
-		authenticated.POST("/p/:username/create", createPost)
-		authenticated.GET("/p/:username/view", viewPosts)
+	}
+
+	{
+		var (
+		//getChildren gin.HandlerFunc
+		//getParents gin.HandlerFunc
+		)
+		//authenticated.GET("/node/down/:name", getChildren)
+		//getChildren = func(c *gin.Context) {
+		//	fmt.Println("getChildren", c.Params.ByName("name"))
+		//}
 	}
 
 	r.POST("/u/:username/login", func(c *gin.Context) {
@@ -140,7 +155,7 @@ func setupRouter() *gin.Engine {
 		go val.GetJWT(&jChan)
 		c.JSON(http.StatusOK, Auth{JWT: <-jChan, Valid: true})
 	}
-	r.POST("/edit/u/create", createUser)
+	r.POST("/edit/create/u", createUser)
 
 	return r
 }

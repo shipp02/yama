@@ -15,13 +15,13 @@ type mNode struct {
 	Depth      sql.NullInt64 `db:"node.depth"`
 }
 
-func (p *mNode) GetParents(depth int, db *sqlx.DB) *[]mNode {
+func (node *mNode) GetParents(depth int, db *sqlx.DB) *[]mNode {
 	stmt, err := db.Preparex("CALL GetParents(?, ?)")
 	if err != nil {
 		return nil
 	}
 	var parents []mNode
-	err = stmt.Select(&parents, depth, p.ID)
+	err = stmt.Select(&parents, depth, node.ID)
 	if err != nil {
 		log.Fatal(err)
 		return nil
@@ -29,16 +29,30 @@ func (p *mNode) GetParents(depth int, db *sqlx.DB) *[]mNode {
 	return &parents
 }
 
-func (n *mNode) GetChildren(depth int, db *sqlx.DB) *[]mNode {
+func (node *mNode) GetChildren(depth int, db *sqlx.DB) *[]mNode {
 	stmt, err := db.Preparex("CALL GetChildren(?, ?)")
 	if err != nil {
 		return nil
 	}
 	var children []mNode
-	err = stmt.Select(&children, depth, n.ID)
+	err = stmt.Select(&children, depth, node.ID)
 	if err != nil {
 		log.Fatal(err)
 		return nil
 	}
 	return &children
+}
+
+func (node *mNode) CreateChild(name string, db *sqlx.DB) {
+	stmt, err := db.Preparex("CALL CreateChild(?, ?)")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	_, err = stmt.Exec(node.ID, name)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	return
 }
