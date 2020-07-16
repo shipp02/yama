@@ -62,7 +62,7 @@ func (u *mUsers) GetPosts(db *sqlx.DB) (*[]mPost, error) {
 		stmt := SELECT(Posts.ID.AS("mPost.id"),
 			Posts.OwnerID.AS("mPost.owner_id"),
 			Posts.Text.AS("mPost.Text")).FROM(Posts).
-			WHERE(Posts.OwnerID.EQ(Int(int64(u.ID)))).LIMIT(10)
+			WHERE(Posts.OwnerID.EQ(Int(int64(u.ID))))
 		err := stmt.Query(db, &posts)
 		if err != nil {
 			if strings.Contains(err.Error(), "qrm: no rows in result set") {
@@ -73,7 +73,7 @@ func (u *mUsers) GetPosts(db *sqlx.DB) (*[]mPost, error) {
 		}
 		return &posts, nil
 	} else {
-		posts := []mPost{}
+		var posts []mPost
 		query := `
 		SELECT * FROM posts
 		WHERE owner_id=$(OID)
