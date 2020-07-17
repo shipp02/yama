@@ -92,9 +92,14 @@ func setupRouter() *gin.Engine {
 			}
 			c.JSON(http.StatusOK, resp)
 		}
+		view1Post := func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"Coming": "SOON"})
+		}
 		authenticated.GET("/u/:username", userDetails)
-		authenticated.POST("/p/:username/create", createPost)
-		authenticated.GET("/p/:username/view", viewPosts)
+		authenticated.POST("/edit/p/:username", createPost)
+		authenticated.PUT("/edit/p/:username/:id", view1Post)
+		authenticated.GET("/view/p/:username", viewPosts)
+		authenticated.GET("/view/p/:username/:id", view1Post)
 	}
 
 	r.POST("/u/:username/login", func(c *gin.Context) {
@@ -145,6 +150,10 @@ func setupRouter() *gin.Engine {
 	}
 	r.POST("/edit/u/create", createUser)
 
+	getChildren := func(c *gin.Context) {
+		fmt.Println("getChildren", c.Params.ByName("name"))
+	}
+	authenticated.GET("/view/tree/down/*name", getChildren)
 	return r
 }
 
