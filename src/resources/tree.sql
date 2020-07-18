@@ -5,7 +5,7 @@ CREATE TABLE  node (
 );
 
 INSERT INTO node (name, parent_id) VALUES ("ROOT", 0);--1
-INSERT INTO node (name, parent_id) VALUES ("c1", 1);
+INSERT INTO node (name, parent_id) VALUES ("c1",1);
 INSERT INTO node (name, parent_id) VALUES ("c1c1",2);
 INSERT INTO node (name, parent_id) VALUES ("c1c2",2);
 INSERT INTO node (name,parent_id) VALUES ("c2",1);--5
@@ -42,4 +42,33 @@ WITH RECURSIVE tree AS (
 )
 
 SELECT * FROM tree;
+
+CREATE PROCEDURE CreateChild (main INTEGER, newName VARCHAR(256))
+BEGIN
+    UPDATE node
+    SET children = true
+    WHERE id =  main;
+    INSERT INTO node (name, parent_id)
+    VALUES (NodeName(parent_id, newName), main);
+    SELECT * FROM node WHERE parent_id = main;
+end;
+
+DROP PROCEDURE IF EXISTS CreateChild;
+CALL CreateChild(1, "c2");
+
+CREATE FUNCTION NodeName(main INTEGER, newName VARCHAR(256))RETURNS VARCHAR(256)
+    DETERMINISTIC
+BEGIN
+    WITH nodes AS (
+        SELECT COUNT(*) AS countNodes
+        FROM node
+        WHERE parent_id = 1 AND name LIKE CONCAT(newName,"-%") OR name = newName
+    )
+    SELECT IF(countNodes = 0, newName, CONCAT(newName,"-",countNodes)) INTO newName
+    FROM nodes;
+    RETURN newName;
+end;
+DROP FUNCTION NodeName;
+SELECT NodeName(1,"c2") AS name;
+
 

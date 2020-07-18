@@ -1,27 +1,18 @@
 package main
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
-	"log"
+	"github.com/nvellon/hal"
 	"strconv"
 	"strings"
 
+	"../resources/test/model"
+	. "../resources/test/table"
+	. "github.com/go-jet/jet/v2/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 )
-
-// PostSchema Schema for posts table
-const PostSchema = `
-CREATE TABLE posts(
-	id int NOT NULL AUTO_INCREMENT,
-	owner_id int NOT NULL,
-	text TEXT,
-	PRIMARY KEY(id),
-	FOREIGN KEY (owner_id) REFERENCES users (id) 
-);
-`
 
 // Post represents a post on a message board
 type Post struct {
@@ -30,118 +21,99 @@ type Post struct {
 	Text    string `db:"text"`
 }
 
-type queryPost struct {
-	id      sql.NullInt64
-	OwnerID sql.NullInt64
-	text    sql.NullString
-}
+type mPost model.Posts
 
-func (qp *queryPost) GetInterface(l int) (s []interface{}) {
-	s = make([]interface{}, l)
-	s[0] = &qp.id
-	s[1] = &qp.OwnerID
-	s[2] = &qp.text
-	return
-}
-
-func (qp *queryPost) ToPost() (p *Post) {
-	// fmt.Println(*qp)
-	p = new(Post)
-	p.ID = qp.id.Int64
-	p.OwnerID = qp.OwnerID.Int64
-	p.Text = qp.text.String
-	// fmt.Println(p)
-	return
+func (p mPost) GetMap() hal.Entry {
+	return hal.Entry{
+		"id":   p.ID,
+		"text": p.Text,
+	}
 }
 
 // GetPost will fetch particular post from db
-func GetPost(db *sqlx.DB, p *Post) (*Post, error) {
+func GetPost(db *sqlx.DB, p *mPost) (*mPost, error) {
 	var err error
-	var query = `
-		SELECT * 
-		FROM posts
-	`
-
-	var idQ = "WHERE id=$(ID)"
-	var oidQ = "WHERE owner_id=$(OID)"
-
 	if p.ID == 0 && p.OwnerID == 0 {
 		err = errors.New("insufficient data")
 	}
-
-	var where string
-
-	if p.ID != 0 && where == "" {
-		where = strings.Replace(idQ, "$(ID)", strconv.FormatInt(p.ID, 10), 1)
-	}
-	if p.OwnerID != 0 && where == "" {
-		where = strings.Replace(oidQ, "$(OID)", strconv.FormatInt(p.OwnerID, 10), 1)
-	}
-	query += where
-	resp, err := db.Query(query)
-	// fmt.Println(resp, err)
-	l, err := resp.Columns()
-
-	var qp = new(queryPost)
-	is := qp.GetInterface(len(l))
-
-	for resp.Next() {
-		if err := resp.Scan(is...); err != nil {
-			log.Fatal(err)
-			//err = errors.New(err.Error())
+	stmt := SELECT(Posts.ID.AS("mPosts.id"),
+		Posts.OwnerID.AS("mPosts.owner_id"),
+		Posts.Text.AS("mPosts.Text")).FROM(Posts).
+		WHERE(Posts.ID.EQ(Int(int64(p.ID)))).
+		LIMIT(1)
+	err = stmt.Query(db, p)
+	if err != nil {
+		if strings.Contains(err.Error(), "qrm: no rows in result set") {
+			return p, nil
+		} else {
+			return nil, err
 		}
-		// fmt.Println(is...)
 	}
-
-	p = qp.ToPost()
 	// fmt.Printf("%p\n", p)
 	return p, err
 }
 
 // GetPosts gets all posts of a user
-func (u *User) GetPosts(db *sqlx.DB) ([]Post, error) {
+func (u *mUsers) GetPosts(db *sqlx.DB) (*[]mPost, error) {
 	var err error
-	posts := []Post{}
-	query := `
+	jetFlag := true
+	if jetFlag {
+		var posts []mPost
+		stmt := SELECT(Posts.ID.AS("mPost.id"),
+			Posts.OwnerID.AS("mPost.owner_id"),
+			Posts.Text.AS("mPost.Text")).FROM(Posts).
+			WHERE(Posts.OwnerID.EQ(Int(int64(u.ID))))
+		err := stmt.Query(db, &posts)
+		if err != nil {
+			if strings.Contains(err.Error(), "qrm: no rows in result set") {
+				return &posts, nil
+			} else {
+				return nil, err
+			}
+		}
+		return &posts, nil
+	} else {
+		var posts []mPost
+		query := `
 		SELECT * FROM posts
 		WHERE owner_id=$(OID)
 	`
-	query = strings.Replace(query, "$(OID)", strconv.FormatInt(u.Id, 10), 1)
-	// fmt.Println(query)
-	err2 := db.Select(&posts, query)
-	if err2 != nil {
-		fmt.Println(err2)
+		query = strings.Replace(query, "$(OID)", strconv.FormatInt(int64(u.ID), 10), 1)
+		// fmt.Println(query)
+		err2 := db.Select(&posts, query)
+		if err2 != nil {
+			fmt.Println(err2)
+		}
+		// fmt.Println(posts)
+		return &posts, err
 	}
-	// fmt.Println(posts)
-	return posts, err
 }
 
 // CreatePost Stores the post in database
-func (p *Post) CreatePost(db *sqlx.DB) error {
-	var err error
-	qp, _ := GetPost(db, p)
-	if qp.ID != 0 {
+func (p *mPost) CreatePost(db *sqlx.DB) error {
+	qp, err := GetPost(db, p)
+	if qp.ID != 0 && qp != nil {
 		err = errors.New("post exists")
 	}
 
-	var exec = "INSERT INTO posts (owner_id, text) VALUES($(OID), \"$(TEXT)\")"
+	stmt := Posts.INSERT(Posts.OwnerID, Posts.Text).VALUES(p.OwnerID, p.Text)
+	_, err = stmt.Exec(db)
+	if err != nil {
+		return err
+	}
 
-	exec = strings.Replace(exec, "$(OID)", strconv.FormatInt(p.OwnerID, 10), 1)
-	exec = strings.Replace(exec, "$(TEXT)", p.Text, 1)
-	// fmt.Println(exec)
-
-	db.MustExec(exec)
 	return err
 }
 
 func mainP() {
 	db := Connect()
-	db.MustExec(PostSchema)
+	//db.MustExec(PostSchema)
 	db.MustExec("INSERT INTO posts (owner_id, text) VALUES(20, \"NEW POST EH\")")
 	db.MustExec("INSERT INTO posts (owner_id, text) VALUES(21, \"another one EH\")")
-	p := new(Post)
+	p := new(mPost)
 	p.OwnerID = 10
-	p.Text = "New method eh"
+	s := "New method eh"
+	p.Text = &s
 	_ = p.CreatePost(db)
 
 	p.OwnerID = 10

@@ -3,41 +3,34 @@ package main
 // This file contains structs for JSON interactions.
 
 import (
-	"encoding/json"
-
-	"github.com/RichardKnop/jsonhal"
+	"github.com/nvellon/hal"
 )
 
 // Password is used for authentication
-type Password struct{
-	Password string	
+type Password struct {
+	Password string
 }
 
 type Auth struct {
-	jsonhal.Hal
-	JWT string
+	JWT   string
 	Valid bool
 }
 
-// func Auth(JWT *string, Valid bool)(a Auth){
-// 	a = Auth{*JWT, Valid}
-// 	return
-// }
-
-func ToPassword(data []byte) (pass *Password){
-	pass = new(Password)
-	json.Unmarshal(data, pass)
-	return
+func (auth Auth) GetMap() hal.Entry {
+	return hal.Entry{
+		"jwt":   auth.JWT,
+		"valid": auth.Valid,
+	}
 }
 
-type UDetails struct {
-	jsonhal.Hal
-	ID int64
-	Name string
-	Username string
+type Response struct {
+	Length  int
+	Content string
 }
 
-func (u *User) ToUDetails() (*UDetails){
-	ud:= UDetails{ID:u.Id, Name:u.Name, Username: u.Username}
-	return &ud
+func (resp Response) GetMap() hal.Entry {
+	return hal.Entry{
+		"Length":  resp.Length,
+		"Content": resp.Content,
+	}
 }

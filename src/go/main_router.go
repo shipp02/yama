@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"github.com/nvellon/hal"
+	"strings"
+
 	// "encoding/json"
 	"fmt"
 	"log"
@@ -13,7 +16,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	// hal "github.com/RichardKnop/jsonhal"
 )
 
 const (
@@ -31,47 +33,127 @@ func setupRouter() *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 
-	userDetails := func(c *gin.Context) {
-		user := c.Params.ByName("name")
-		// fmt.Println(user)
-		var u = new(User)
-		u.Name = user
-		u, _ = GetUser(db, u)
-		du := u.ToUDetails()
-		du.SetLink("self", c.Request.URL.String(), "")
-		c.JSON(http.StatusOK, du)
-	}
-
 	authenticated := r.Group("/")
 	authenticated.Use(JWTAuth)
 	{
-		authenticated.GET("/u/:name", userDetails)
+		var (
+			userDetails gin.HandlerFunc // Gives details of user
+			createPost  gin.HandlerFunc // Creates a post
+			viewPosts   gin.HandlerFunc // Shows all posts
+		)
+		userDetails = func(c *gin.Context) {
+			var u = UserByUsername(c.Params.ByName("username"), db)
+			// fmt.Println(user)
+			if u.ID != 0 {
+				ur := hal.NewResource(u, c.Request.URL.String())
+				c.JSON(http.StatusOK, ur)
+			} else {
+				s := "user with username %s does not exist"
+				c.JSON(http.StatusOK, gin.H{"error": fmt.Sprintf(s, c.Params.ByName("username"))})
+			}
+		}
+		createPost = func(c *gin.Context) {
+			user := UserByUsername(c.Params.ByName("username"), db)
+			var s = struct {
+				Text string
+			}{}
+			err := c.BindJSON(&s)
+			if err != nil {
+				c.AbortWithStatus(http.StatusBadRequest)
+				return
+			}
+			post := mPost{
+				OwnerID: user.ID,
+				Text:    &s.Text,
+			}
+			err = post.CreatePost(db)
+			if err != nil {
+				c.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+			c.AbortWithStatus(http.StatusOK)
+
+		}
+		viewPosts = func(c *gin.Context) {
+			user := UserByUsername(c.Params.ByName("username"), db)
+			if user == nil {
+				c.AbortWithStatus(http.StatusBadRequest)
+			}
+			posts, err := user.GetPosts(db)
+			if err != nil {
+				log.Println(err)
+				c.AbortWithStatus(http.StatusInternalServerError)
+				return
+			}
+			resp := hal.NewResource(Response{Length: len(*posts), Content: "posts"}, c.Request.URL.String())
+			p := *posts
+			for _, rrp := range p {
+				resp.Embedded.Add("posts", hal.NewResource(rrp, ""))
+			}
+			c.JSON(http.StatusOK, resp)
+		}
+		view1Post := func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{"Coming": "SOON"})
+		}
+		authenticated.GET("/u/:username", userDetails)
+		authenticated.POST("/edit/p/:username", createPost)
+		authenticated.PUT("/edit/p/:username/:id", view1Post)
+		authenticated.GET("/view/p/:username", viewPosts)
+		authenticated.GET("/view/p/:username/:id", view1Post)
 	}
 
-	r.POST("/u/:name/login", func(c *gin.Context) {
-		name := c.Params.ByName("name")
-		var u = new(User)
-		u.Name = name
-		u, _ = GetUser(db, u)
-		length, err := strconv.Atoi(c.Request.Header.Get("Content-Length"))
+	r.POST("/u/:username/login", func(c *gin.Context) {
+		u := UserByUsername(c.Params.ByName("username"), db)
+		//Length, err := strconv.Atoi(c.Request.Header.Get("Content-Length"))
+		var p = new(Password)
+		err := c.BindJSON(p)
 		if err != nil {
 			log.Fatal(err)
 		}
-		body := make([]byte, length)
-		length, _ = c.Request.Body.Read(body)
-		p := ToPassword(body)
 		if CheckPass(p, u.PasswordHash) {
 			fmt.Println("Same guy")
-			jchan := make(chan string)
-			go u.GetJWT(&jchan)
-			c.JSON(http.StatusOK, Auth{JWT: <-jchan, Valid: true})
+			jChan := make(chan string)
+			go u.GetJWT(&jChan)
+			authRes := hal.NewResource(Auth{JWT: <-jChan, Valid: true}, c.Request.RequestURI)
+			c.JSON(http.StatusOK, authRes)
 		} else {
 			fmt.Println("Wrong pass")
 			jwt := "Invalid Password"
-			c.JSON(http.StatusForbidden, Auth{JWT: jwt, Valid: false})
+			authRes := hal.NewResource(Auth{JWT: jwt, Valid: false}, c.Request.RequestURI)
+			c.JSON(http.StatusForbidden, authRes)
 		}
 	})
 
+	createUser := func(c *gin.Context) {
+		log.Println(":func createUser ran")
+		val := new(mUsers)
+		err := c.BindJSON(val)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, err)
+			log.Fatal(err)
+			return
+		}
+		log.Println("func createUser", val)
+		err = val.CreateUser(db)
+		if err != nil {
+			if strings.Contains(err.Error(), "user exists") {
+				c.JSON(http.StatusOK, gin.H{"Error": "User exists"})
+				c.Abort()
+			} else {
+				c.JSON(http.StatusInternalServerError, err)
+			}
+			return
+		}
+		jChan := make(chan string)
+		go val.GetJWT(&jChan)
+		c.JSON(http.StatusOK, Auth{JWT: <-jChan, Valid: true})
+	}
+	r.POST("/edit/u/create", createUser)
+
+	getChildren := func(c *gin.Context) {
+		fmt.Println("getChildren", c.Params.ByName("name"))
+	}
+	authenticated.GET("/view/tree/down/*name", getChildren)
 	return r
 }
 

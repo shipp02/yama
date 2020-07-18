@@ -3,25 +3,25 @@ package main
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"log"
 	"fmt"
+	"log"
 )
 
 var c *Config
 
 type Config struct {
 	PrivateKey *rsa.PrivateKey
-	PublicKey *rsa.PublicKey
-	Issuer *string
-	Secret *[]byte
+	PublicKey  *rsa.PublicKey
+	Issuer     *string
+	Secret     *[]byte
 }
 
-func DefaultConfig() (*Config) {
+func DefaultConfig() *Config {
 	if c == nil {
 		fmt.Println("Create config")
 		c = new(Config)
 		var err error
-		c.PrivateKey,err = rsa.GenerateKey(rand.Reader, 2048)
+		c.PrivateKey, err = rsa.GenerateKey(rand.Reader, 2048)
 		// fmt.Println("Private Key:",c.PrivateKey)
 		if err != nil {
 			log.Fatal(err)
