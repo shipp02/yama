@@ -72,3 +72,16 @@ DROP FUNCTION NodeName;
 SELECT NodeName(1,"c2") AS name;
 
 
+CREATE FUNCTION FindChild(current INTEGER, childName VARCHAR(256)) RETURNS INTEGER
+    DETERMINISTIC
+BEGIN
+    DECLARE child_id INTEGER;
+    WITH children AS (
+        SELECT *
+        FROM node WHERE parent_id = current
+    )
+    SELECT id INTO child_id FROM children WHERE name = childName;
+    RETURN child_id;
+end;
+
+SELECT FindChild(5, "child-5");

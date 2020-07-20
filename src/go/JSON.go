@@ -34,3 +34,15 @@ func (resp Response) GetMap() hal.Entry {
 		"Content": resp.Content,
 	}
 }
+
+func MapArray(objects []hal.Mapper, selfUri string, content string) *hal.Resource {
+	resp := Response{
+		Length:  len(objects),
+		Content: content,
+	}
+	respResource := hal.NewResource(resp, selfUri)
+	for _, object := range objects {
+		respResource.Embed("", hal.NewResource(object, ""))
+	}
+	return respResource
+}

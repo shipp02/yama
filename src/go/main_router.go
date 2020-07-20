@@ -151,9 +151,27 @@ func setupRouter() *gin.Engine {
 	r.POST("/edit/u/create", createUser)
 
 	getChildren := func(c *gin.Context) {
-		fmt.Println("getChildren", c.Params.ByName("name"))
+		fullPath := c.Params.ByName("name")
+		node := mNode{
+			ID: 1,
+		}
+		//res := hal.NewResource(node.FindChildren(fullPath, db), c.Request.RequestURI)
+		nodes := *node.FindChildren(fullPath, db)
+		resp := MapArray(nodes, c.Request.RequestURI, "children")
+		c.JSON(http.StatusOK, resp)
 	}
 	authenticated.GET("/view/tree/down/*name", getChildren)
+	var getChildrenContext gin.HandlerFunc
+	getChildrenContext = func(c *gin.Context) {
+		contextPath := c.Request.Header.Get("Context")
+		fullPath := contextPath + c.Params.ByName("path")
+		node := mNode{
+			ID: 1,
+		}
+		nodes := *node.FindChildren(fullPath, db)
+		c.JSON(http.StatusOK, nodes)
+	}
+	authenticated.GET("/view/tree/down/_/*path", getChildrenContext)
 	return r
 }
 
