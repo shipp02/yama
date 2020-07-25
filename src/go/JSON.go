@@ -35,6 +35,21 @@ func (resp Response) GetMap() hal.Entry {
 	}
 }
 
+func NodeToMap(nodes *[]mNode) *[]hal.Mapper {
+	mapper := make([]hal.Mapper, len(*nodes))
+	for i, elem := range *nodes {
+		mapper[i] = elem
+	}
+	return &mapper
+}
+func UserToMap(users *[]mUsers) *[]hal.Mapper {
+	mapper := make([]hal.Mapper, len(*users))
+	for i, elem := range *users {
+		mapper[i] = elem
+	}
+	return &mapper
+}
+
 func MapArray(objects []hal.Mapper, selfUri string, content string) *hal.Resource {
 	resp := Response{
 		Length:  len(objects),

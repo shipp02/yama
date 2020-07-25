@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/nvellon/hal"
 	"log"
@@ -23,6 +24,20 @@ func (node mNode) GetMap() hal.Entry {
 		"name":         node.Name,
 		"has_children": node.Children,
 	}
+}
+
+type Nodes []mNode
+
+func (nodes Nodes) GetMap() hal.Entry {
+	entries := make([]hal.Resource, len(nodes))
+	entry := hal.Resource{}
+	for i, elem := range nodes {
+		entries[i] = hal.Resource{
+			Payload: elem,
+		}
+		entry.Embed("", &entries[i])
+	}
+	return entry.GetMap()
 }
 
 func (node *mNode) GetParents(depth int, db *sqlx.DB) *[]mNode {
@@ -67,7 +82,7 @@ func (node *mNode) CreateChild(name string, db *sqlx.DB) {
 	return
 }
 
-func (node *mNode) FindChildren(fullPath string, db *sqlx.DB) *[]mNode {
+func (node *mNode) FindChildren(fullPath string, db *sqlx.DB) *Nodes {
 	var path = strings.Split(fullPath, "/")[1:]
 	currentNode := mNode{}
 	stmt, err := db.Preparex("SELECT FindChild(?,  ?) AS \"node.id\"")
@@ -77,6 +92,7 @@ func (node *mNode) FindChildren(fullPath string, db *sqlx.DB) *[]mNode {
 	}
 	prev := node.ID
 	for _, elem := range path {
+		fmt.Println(elem)
 		err = stmt.Get(&currentNode, prev, elem)
 		if err != nil {
 			log.Println(err)
@@ -84,5 +100,5 @@ func (node *mNode) FindChildren(fullPath string, db *sqlx.DB) *[]mNode {
 		}
 		prev = currentNode.ID
 	}
-	return currentNode.GetChildren(1, db)
+	return (*Nodes)(currentNode.GetChildren(1, db))
 }

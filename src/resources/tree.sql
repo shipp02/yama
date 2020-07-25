@@ -43,18 +43,18 @@ WITH RECURSIVE tree AS (
 
 SELECT * FROM tree;
 
-CREATE PROCEDURE CreateChild (main INTEGER, newName VARCHAR(256))
+CREATE PROCEDURE CreateChild (new_parent_id INTEGER, newName VARCHAR(256))
 BEGIN
     UPDATE node
     SET children = true
-    WHERE id =  main;
+    WHERE id =  new_parent_id;
     INSERT INTO node (name, parent_id)
-    VALUES (NodeName(parent_id, newName), main);
-    SELECT * FROM node WHERE parent_id = main;
+    VALUES (NodeName(new_parent_id, newName), new_parent_id);
+    SELECT * FROM node WHERE parent_id = new_parent_id;
 end;
 
 DROP PROCEDURE IF EXISTS CreateChild;
-CALL CreateChild(1, "c2");
+CALL CreateChild(2 ,"child");
 
 CREATE FUNCTION NodeName(main INTEGER, newName VARCHAR(256))RETURNS VARCHAR(256)
     DETERMINISTIC
@@ -62,7 +62,7 @@ BEGIN
     WITH nodes AS (
         SELECT COUNT(*) AS countNodes
         FROM node
-        WHERE parent_id = 1 AND name LIKE CONCAT(newName,"-%") OR name = newName
+        WHERE parent_id = main AND (name REGEXP CONCAT("^", newName, "-{1}", "[:digit:]*$") OR name = newName)
     )
     SELECT IF(countNodes = 0, newName, CONCAT(newName,"-",countNodes)) INTO newName
     FROM nodes;
@@ -84,4 +84,4 @@ BEGIN
     RETURN child_id;
 end;
 
-SELECT FindChild(5, "child-5");
+SELECT FindChild(2, "child");

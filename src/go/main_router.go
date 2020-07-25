@@ -156,11 +156,12 @@ func setupRouter() *gin.Engine {
 			ID: 1,
 		}
 		//res := hal.NewResource(node.FindChildren(fullPath, db), c.Request.RequestURI)
-		nodes := *node.FindChildren(fullPath, db)
-		resp := MapArray(nodes, c.Request.RequestURI, "children")
-		c.JSON(http.StatusOK, resp)
+		nodes := node.FindChildren(fullPath, db)
+		//resp := MapArray(*NodeToMap(nodes), c.Request.RequestURI, "children")
+		//resp := hal.NewResource(nodes, c.Request.RequestURI)
+		c.JSON(http.StatusOK, nodes)
 	}
-	authenticated.GET("/view/tree/down/*name", getChildren)
+	authenticated.GET("/view/tree/down/~/*name", getChildren)
 	var getChildrenContext gin.HandlerFunc
 	getChildrenContext = func(c *gin.Context) {
 		contextPath := c.Request.Header.Get("Context")
