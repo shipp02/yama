@@ -15,8 +15,6 @@ import (
 	. "github.com/go-jet/jet/v2/mysql"
 )
 
-var jetFlag = false
-
 // User Represents user of application
 type User struct {
 	Id           int64

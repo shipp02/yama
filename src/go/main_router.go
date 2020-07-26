@@ -159,8 +159,38 @@ func setupRouter() *gin.Engine {
 		nodes := node.FindChildren(fullPath, db)
 		//resp := MapArray(*NodeToMap(nodes), c.Request.RequestURI, "children")
 		//resp := hal.NewResource(nodes, c.Request.RequestURI)
-		c.JSON(http.StatusOK, nodes)
+		resp := NodeToMap((*[]mNode)(nodes))
+		c.JSON(http.StatusOK, resp)
 	}
+	createChild := func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Params.ByName("id"))
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"Error": "id must be a integer"})
+		}
+		parentNode := newMNode(int64(id))
+		var name = struct {
+			Name string `json:"name"`
+		}{}
+		err = c.BindJSON(&name)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"Error": "name not provided in json"})
+			log.Println(err.Error())
+			return
+		}
+		err = parentNode.CreateChild(name.Name, db)
+		if err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		node := NodeByParent(int64(id), name.Name, db)
+		//resp := hal.NewResource(*node, c.Request.RequestURI)
+		c.JSON(http.StatusOK, *node)
+
+	}
+	var checkChild gin.HandlerFunc
+	checkChild = func(c *gin.Context) {}
+	authenticated.POST("/edit/tree/:id/check", checkChild)
+	authenticated.POST("/edit/tree/:id", createChild)
 	authenticated.GET("/view/tree/down/~/*name", getChildren)
 	var getChildrenContext gin.HandlerFunc
 	getChildrenContext = func(c *gin.Context) {

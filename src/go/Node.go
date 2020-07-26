@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/nvellon/hal"
@@ -18,6 +19,10 @@ type mNode struct {
 	Depth      sql.NullInt64 `db:"node.depth"`
 }
 
+func newMNode(ID int64) *mNode {
+	return &mNode{ID: ID}
+}
+
 func (node mNode) GetMap() hal.Entry {
 	return hal.Entry{
 		"id":           node.ID,
@@ -27,6 +32,19 @@ func (node mNode) GetMap() hal.Entry {
 }
 
 type Nodes []mNode
+
+func NodeByParent(parent_id int64, name string, db *sqlx.DB) *mNode {
+	stmt, err := db.Preparex("CALL FindChildDetails(?, ?)")
+	if err != nil {
+		return nil
+	}
+	var node mNode
+	err = stmt.Get(&node, parent_id, name)
+	if err != nil {
+		return nil
+	}
+	return &node
+}
 
 func (nodes Nodes) GetMap() hal.Entry {
 	entries := make([]hal.Resource, len(nodes))
@@ -68,16 +86,26 @@ func (node *mNode) GetChildren(depth int, db *sqlx.DB) *[]mNode {
 	return &children
 }
 
-func (node *mNode) CreateChild(name string, db *sqlx.DB) {
+func (node *mNode) CreateChild(name string, db *sqlx.DB) error {
 	stmt, err := db.Preparex("CALL CreateChild(?, ?)")
 	if err != nil {
-		log.Println(err)
-		return
+		log.Fatal(err)
 	}
 	_, err = stmt.Exec(node.ID, name)
 	if err != nil {
-		log.Fatal(err)
-		return
+		return errors.New("creating child failed")
+	}
+	return nil
+}
+
+func (node *mNode) CheckChild(name string, db *sqlx.DB) (possibleName string) {
+	stmt, err := db.Preparex("SELECT NodeName(?, ?) AS name")
+	if err != nil {
+		return ""
+	}
+	err = stmt.Select(possibleName, node.ID, name)
+	if err != nil {
+		return ""
 	}
 	return
 }

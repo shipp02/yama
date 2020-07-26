@@ -32,18 +32,6 @@ CREATE TABLE node
     parent_id   INTEGER      NOT NULL,
     FOREIGN KEY (document_id) REFERENCES document (id)
 );
-# SELECT id, username, name FROM users
-# -- name: GetUserByID : one
-# SELECT * FROM users
-# WHERE id = $1 LIMIT 1;
-#
-# -- name: GetUserByUsername : one
-# SELECT * FROM users
-# WHERE username = $1 LIMIT 1;
-#
-# -- name: CreateUser :exec
-# INSERT INTO users (name, username, password_hash)
-# VALUES ($1, $2, $3)
 
 
 
