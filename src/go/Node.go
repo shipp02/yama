@@ -33,17 +33,16 @@ func (node mNode) GetMap() hal.Entry {
 
 type Nodes []mNode
 
-func NodeByParent(parent_id int64, name string, db *sqlx.DB) *mNode {
+func NodeByParent(parentId int64, name string, db *sqlx.DB) (node *mNode) {
 	stmt, err := db.Preparex("CALL FindChildDetails(?, ?)")
 	if err != nil {
-		return nil
+		return
 	}
-	var node mNode
-	err = stmt.Get(&node, parent_id, name)
+	err = stmt.Get(node, parentId, name)
 	if err != nil {
-		return nil
+		return
 	}
-	return &node
+	return
 }
 
 func (nodes Nodes) GetMap() hal.Entry {

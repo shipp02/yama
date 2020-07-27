@@ -33,5 +33,18 @@ CREATE TABLE node
     FOREIGN KEY (document_id) REFERENCES document (id)
 );
 
+CREATE TABLE grp
+(
+    id   int NOT NULL AUTO_INCREMENT,
+    name VARCHAR(200),
+    PRIMARY KEY (id)
+);
 
+CREATE TABLE usergroups
+(
+    group_id int,
+    user_id  int,
+    FOREIGN KEY (group_id) REFERENCES grp (id),
+    FOREIGN KEY (user_id) REFERENCES users (id)
+)
 

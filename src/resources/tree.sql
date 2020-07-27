@@ -4,11 +4,11 @@ CREATE TABLE  node (
   parent_id INTEGER NOT NULL
 );
 
-INSERT INTO node (name, parent_id) VALUES ('ROOT', 0);--1
+INSERT INTO node (name, parent_id) VALUES ('ROOT', 0);#--1
 INSERT INTO node (name, parent_id) VALUES ('c1',1);
 INSERT INTO node (name, parent_id) VALUES ('c1c1',2);
 INSERT INTO node (name, parent_id) VALUES ('c1c2',2);
-INSERT INTO node (name,parent_id) VALUES ('c2',1);--5
+INSERT INTO node (name,parent_id) VALUES ('c2',1);#--5
 INSERT INTO node (name,parent_id) VALUES ('c2c1',5);
 INSERT INTO node (name,parent_id) VALUES ('c2c2',5);
 INSERT INTO node (name,parent_id) VALUES ('c2c2c1',7);
