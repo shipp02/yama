@@ -108,8 +108,8 @@ func (p *mPost) CreatePost(db *sqlx.DB) error {
 func mainP() {
 	db := Connect()
 	//db.MustExec(PostSchema)
-	db.MustExec("INSERT INTO posts (owner_id, text) VALUES(20, \"NEW POST EH\")")
-	db.MustExec("INSERT INTO posts (owner_id, text) VALUES(21, \"another one EH\")")
+	db.MustExec("INSERT INTO posts (owner_id, text) VALUES(20, 'NEW POST EH')")
+	db.MustExec("INSERT INTO posts (owner_id, text) VALUES(21, 'another one EH')")
 	p := new(mPost)
 	p.OwnerID = 10
 	s := "New method eh"

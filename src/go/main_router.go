@@ -151,9 +151,85 @@ func setupRouter() *gin.Engine {
 	r.POST("/edit/u/create", createUser)
 
 	getChildren := func(c *gin.Context) {
-		fmt.Println("getChildren", c.Params.ByName("name"))
+		fullPath := c.Params.ByName("name")
+		node := mNode{
+			ID: 1,
+		}
+		//res := hal.NewResource(node.FindChildren(fullPath, db), c.Request.RequestURI)
+		nodes := node.FindChildren(fullPath, db)
+		//resp := MapArray(*NodeToMap(nodes), c.Request.RequestURI, "children")
+		//resp := hal.NewResource(nodes, c.Request.RequestURI)
+		//resp := NodeToMap((*[]mNode)(nodes))
+		c.JSON(http.StatusOK, nodes)
 	}
-	authenticated.GET("/view/tree/down/*name", getChildren)
+	createChild := func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Params.ByName("id"))
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"Error": "id must be a integer"})
+		}
+		parentNode := newMNode(int64(id))
+		var name = struct {
+			Name string `json:"name"`
+		}{}
+		err = c.BindJSON(&name)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"Error": "name not provided in json"})
+			log.Println(err.Error())
+			return
+		}
+		err = parentNode.CreateChild(name.Name, db)
+		if err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		node := NodeByParent(int64(id), name.Name, db)
+		//resp := hal.NewResource(*node, c.Request.RequestURI)
+		c.JSON(http.StatusOK, *node)
+
+	}
+	var checkChild gin.HandlerFunc
+	checkChild = func(c *gin.Context) {}
+	authenticated.POST("/edit/tree/:id/check", checkChild)
+	authenticated.POST("/edit/tree/:id", createChild)
+	authenticated.GET("/view/tree/down/~/*name", getChildren)
+	var getChildrenContext gin.HandlerFunc
+	getChildrenContext = func(c *gin.Context) {
+		contextPath := c.Request.Header.Get("Context")
+		fullPath := contextPath + c.Params.ByName("path")
+		node := mNode{
+			ID: 1,
+		}
+		nodes := *node.FindChildren(fullPath, db)
+		c.JSON(http.StatusOK, nodes)
+	}
+	authenticated.GET("/view/tree/down/_/*path", getChildrenContext)
+
+	var viewGroups gin.HandlerFunc
+	viewGroups = func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Params.ByName("id"))
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"Error": ":id must be a valid integer"})
+			return
+		}
+		grp, err := GetGroup(id, db)
+		if err != nil {
+			log.Println(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "requested group does not exist"})
+			return
+		}
+		members, err := grp.GetUserDetails(db)
+		if err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		var resp = hal.NewResource(Response{Content: "members", Length: len(members), element: grp}, c.Request.RequestURI)
+		for _, member := range members {
+			resp.Embedded.Add(hal.Relation(strconv.Itoa(int(member.ID))), hal.NewResource(member, "/u/"+member.Username))
+		}
+		c.JSON(http.StatusOK, resp)
+	}
+	authenticated.GET("/view/g/:id", viewGroups)
+	authenticated.GET("/view/g/")
 	return r
 }
 

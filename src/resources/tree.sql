@@ -4,14 +4,14 @@ CREATE TABLE  node (
   parent_id INTEGER NOT NULL
 );
 
-INSERT INTO node (name, parent_id) VALUES ("ROOT", 0);--1
-INSERT INTO node (name, parent_id) VALUES ("c1",1);
-INSERT INTO node (name, parent_id) VALUES ("c1c1",2);
-INSERT INTO node (name, parent_id) VALUES ("c1c2",2);
-INSERT INTO node (name,parent_id) VALUES ("c2",1);--5
-INSERT INTO node (name,parent_id) VALUES ("c2c1",5);
-INSERT INTO node (name,parent_id) VALUES ("c2c2",5);
-INSERT INTO node (name,parent_id) VALUES ("c2c2c1",7);
+INSERT INTO node (name, parent_id) VALUES ('ROOT', 0);#--1
+INSERT INTO node (name, parent_id) VALUES ('c1',1);
+INSERT INTO node (name, parent_id) VALUES ('c1c1',2);
+INSERT INTO node (name, parent_id) VALUES ('c1c2',2);
+INSERT INTO node (name,parent_id) VALUES ('c2',1);#--5
+INSERT INTO node (name,parent_id) VALUES ('c2c1',5);
+INSERT INTO node (name,parent_id) VALUES ('c2c2',5);
+INSERT INTO node (name,parent_id) VALUES ('c2c2c1',7);
 
 -- finds parents
 WITH RECURSIVE tree AS (
@@ -43,18 +43,18 @@ WITH RECURSIVE tree AS (
 
 SELECT * FROM tree;
 
-CREATE PROCEDURE CreateChild (main INTEGER, newName VARCHAR(256))
+CREATE PROCEDURE CreateChild (new_parent_id INTEGER, newName VARCHAR(256))
 BEGIN
     UPDATE node
     SET children = true
-    WHERE id =  main;
+    WHERE id =  new_parent_id;
     INSERT INTO node (name, parent_id)
-    VALUES (NodeName(parent_id, newName), main);
-    SELECT * FROM node WHERE parent_id = main;
+    VALUES (NodeName(new_parent_id, newName), new_parent_id);
+    SELECT * FROM node WHERE parent_id = new_parent_id;
 end;
 
 DROP PROCEDURE IF EXISTS CreateChild;
-CALL CreateChild(1, "c2");
+CALL CreateChild(4 ,'child');
 
 CREATE FUNCTION NodeName(main INTEGER, newName VARCHAR(256))RETURNS VARCHAR(256)
     DETERMINISTIC
@@ -62,13 +62,37 @@ BEGIN
     WITH nodes AS (
         SELECT COUNT(*) AS countNodes
         FROM node
-        WHERE parent_id = 1 AND name LIKE CONCAT(newName,"-%") OR name = newName
+        WHERE parent_id = main AND (name REGEXP CONCAT('^', newName, '-{1}', '[:digit:]*$') OR name = newName)
     )
-    SELECT IF(countNodes = 0, newName, CONCAT(newName,"-",countNodes)) INTO newName
+    SELECT IF(countNodes = 0, newName, CONCAT(newName,'-',countNodes)) INTO newName
     FROM nodes;
     RETURN newName;
 end;
 DROP FUNCTION NodeName;
-SELECT NodeName(1,"c2") AS name;
+SELECT NodeName(1,'c2') AS name;
 
 
+CREATE FUNCTION FindChild(current INTEGER, childName VARCHAR(256)) RETURNS INTEGER
+    DETERMINISTIC
+BEGIN
+    DECLARE child_id INTEGER;
+    WITH children AS (
+        SELECT *
+        FROM node WHERE parent_id = current
+    )
+    SELECT id INTO child_id FROM children WHERE name = childName;
+    RETURN child_id;
+end;
+
+CREATE PROCEDURE FindChildDetails(current INTEGER, childName VARCHAR(256))
+BEGIN
+    SELECT id AS 'node.id',
+           name AS 'node.name' ,
+           children AS 'node.children',
+           parent_id AS 'node.parent_id',
+           document_id AS 'node.document_id'
+           FROM node WHERE FindChild(current, childName);
+
+end;
+
+SELECT FindChild(2, 'child');

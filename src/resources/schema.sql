@@ -32,18 +32,20 @@ CREATE TABLE node
     parent_id   INTEGER      NOT NULL,
     FOREIGN KEY (document_id) REFERENCES document (id)
 );
-# SELECT id, username, name FROM users
-# -- name: GetUserByID : one
-# SELECT * FROM users
-# WHERE id = $1 LIMIT 1;
-#
-# -- name: GetUserByUsername : one
-# SELECT * FROM users
-# WHERE username = $1 LIMIT 1;
-#
-# -- name: CreateUser :exec
-# INSERT INTO users (name, username, password_hash)
-# VALUES ($1, $2, $3)
 
+CREATE TABLE grp
+(
+    id   int NOT NULL AUTO_INCREMENT,
+    name VARCHAR(200),
+    anonymous BOOLEAN DEFAULT false,
+    PRIMARY KEY (id)
+);
 
+CREATE TABLE usergroups
+(
+    group_id int,
+    user_id  int,
+    FOREIGN KEY (group_id) REFERENCES grp (id),
+    FOREIGN KEY (user_id) REFERENCES users (id)
+)
 

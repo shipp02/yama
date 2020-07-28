@@ -15,14 +15,12 @@ import (
 	. "github.com/go-jet/jet/v2/mysql"
 )
 
-var jetFlag = false
-
 // User Represents user of application
 type User struct {
-	Id           int64
-	Name         string
-	Username     string
-	PasswordHash string
+	Id           int64  `db:"user.id"`
+	Name         string `db:"user.name"`
+	Username     string `db:"user.username"`
+	PasswordHash string `db:"user.password_hash"`
 	JWT          string
 	// groups []Group
 	permissions []int
@@ -129,6 +127,7 @@ func (u *mUsers) CreateUser(db *sqlx.DB) error {
 		return err
 	}
 	if uCheck := UserByUsername(u.Username, db); uCheck.ID != 0 {
+		u.ID = uCheck.ID
 		return errors.New("user exists")
 	}
 	exec := Users.INSERT(
@@ -144,6 +143,8 @@ func (u *mUsers) CreateUser(db *sqlx.DB) error {
 	if err != nil {
 		log.Fatal("Create User: ", err)
 	}
+	id, _ := result.LastInsertId()
+	u.ID = int32(id)
 	log.Println("Create User", result)
 	return err
 }
@@ -179,7 +180,7 @@ func DummyUsers(db *sqlx.DB) {
 			return
 		}
 	}
-	fmt.Println(u1.GetPosts(db))
+	//fmt.Println(u1.GetPosts(db))
 
 	var n = mNode{
 		ID: 8,
@@ -189,9 +190,34 @@ func DummyUsers(db *sqlx.DB) {
 	n.ID = 5
 	fmt.Println(n.GetChildren(1, db))
 
-	n.CreateChild("child", db)
-	n.CreateChild("child", db)
-	n.CreateChild("child", db)
+	grp1 := &Group{Name: "Group one"}
+	//err := grp1.CreateGroup(db)
+	//if err != nil {
+	//	log.Println(err)
+	//}
+
+	//err = u1.AddToGroup(grp1.ID, db)
+	//if err != nil {
+	//	log.Println(err)
+	//	return
+	//}
+	//_ = u2.AddToGroup(grp1.ID, db)
+
+	//ids, err := grp1.GetUsersID(db)
+	//fmt.Println(ids, err)
+	grp1.ID = 10
+	userDetails, err := grp1.GetUserDetails(db)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	fmt.Println(userDetails)
+
+	//fmt.Println(grp1.GetUserDetails(db))
+	//n.ID  = 15
+	//n.CreateChild("child", db)
+	//n.CreateChild("child", db)
+	//n.CreateChild("child", db)
 	//_, err = u1.GetPosts(db)
 	//db.MustExec(NodeSchema)
 	//n := new(mNode)
