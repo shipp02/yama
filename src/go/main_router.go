@@ -159,8 +159,8 @@ func setupRouter() *gin.Engine {
 		nodes := node.FindChildren(fullPath, db)
 		//resp := MapArray(*NodeToMap(nodes), c.Request.RequestURI, "children")
 		//resp := hal.NewResource(nodes, c.Request.RequestURI)
-		resp := NodeToMap((*[]mNode)(nodes))
-		c.JSON(http.StatusOK, resp)
+		//resp := NodeToMap((*[]mNode)(nodes))
+		c.JSON(http.StatusOK, nodes)
 	}
 	createChild := func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Params.ByName("id"))
@@ -203,6 +203,27 @@ func setupRouter() *gin.Engine {
 		c.JSON(http.StatusOK, nodes)
 	}
 	authenticated.GET("/view/tree/down/_/*path", getChildrenContext)
+
+	var viewGroups gin.HandlerFunc
+	viewGroups = func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Params.ByName("id"))
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"Error": ":id must be a valid integer"})
+			return
+		}
+		grp := Group{ID: int64(id)}
+		members, err := grp.GetUserDetails(db)
+		if err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		var resp = hal.NewResource(Response{Content: "members", Length: len(members)}, c.Request.RequestURI)
+		for _, member := range members {
+			resp.Embedded.Add(hal.Relation(strconv.Itoa(int(member.ID))), hal.NewResource(member, "/u/"+member.Username))
+		}
+		c.JSON(http.StatusOK, resp)
+	}
+	authenticated.GET("/view/g/:id", viewGroups)
 	return r
 }
 

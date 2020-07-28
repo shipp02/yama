@@ -54,7 +54,7 @@ BEGIN
 end;
 
 DROP PROCEDURE IF EXISTS CreateChild;
-CALL CreateChild(2 ,'child');
+CALL CreateChild(4 ,'child');
 
 CREATE FUNCTION NodeName(main INTEGER, newName VARCHAR(256))RETURNS VARCHAR(256)
     DETERMINISTIC

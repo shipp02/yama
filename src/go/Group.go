@@ -11,8 +11,6 @@ type Group struct {
 	Name string `db:"name"`
 }
 
-type UsersInGroup []mUsers
-
 func GetGroup(id int64, db *sqlx.DB) (*Group, error) {
 	stmt, err := db.Preparex("SELECT id AS 'group.id' ,name AS 'group.name' FROM grp WHERE id = ?")
 	if err != nil {

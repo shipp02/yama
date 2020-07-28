@@ -37,6 +37,7 @@ CREATE TABLE grp
 (
     id   int NOT NULL AUTO_INCREMENT,
     name VARCHAR(200),
+    anonymous BOOLEAN DEFAULT false,
     PRIMARY KEY (id)
 );
 
