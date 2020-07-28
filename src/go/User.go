@@ -180,7 +180,7 @@ func DummyUsers(db *sqlx.DB) {
 			return
 		}
 	}
-	fmt.Println(u1.GetPosts(db))
+	//fmt.Println(u1.GetPosts(db))
 
 	var n = mNode{
 		ID: 8,
@@ -196,15 +196,16 @@ func DummyUsers(db *sqlx.DB) {
 		log.Println(err)
 	}
 
-	//err = u1.AddToGroup(grp1.ID, db)
-	//if err != nil {
-	//	log.Println(err)
-	//	return
-	//}
-	//_ = u2.AddToGroup(grp1.ID, db)
+	err = u1.AddToGroup(grp1.ID, db)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	_ = u2.AddToGroup(grp1.ID, db)
 
-	fmt.Println(grp1.GetUsersID(db))
-	fmt.Println(grp1.GetUserDetails(db))
+	ids, err := grp1.GetUsersID(db)
+	fmt.Println(ids, err)
+	//fmt.Println(grp1.GetUserDetails(db))
 	//n.ID  = 15
 	//n.CreateChild("child", db)
 	//n.CreateChild("child", db)

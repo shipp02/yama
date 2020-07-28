@@ -62,14 +62,13 @@ func (grp *Group) GetUsersID(db *sqlx.DB) ([]int64, error) {
 		log.Println(err)
 		return nil, errors.New("unable to resolve statement")
 	}
-	var users = struct {
-		userIds []int64 `db:"user_id"`
-	}{}
-	err = stmt.Get(&users, grp.ID)
+	var users []int64
+	err = stmt.Select(&users, grp.ID)
 	if err != nil {
 		return nil, err
 	}
-	return users.userIds, nil
+	//var userIds = make([]int64, len(users))
+	return users, nil
 }
 
 func (grp *Group) GetUserDetails(db *sqlx.DB) ([]mUsers, error) {
