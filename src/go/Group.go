@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/jmoiron/sqlx"
+	"github.com/nvellon/hal"
 	"log"
 )
 
@@ -11,14 +12,20 @@ type Group struct {
 	Name string `db:"name"`
 }
 
-func GetGroup(id int64, db *sqlx.DB) (*Group, error) {
-	stmt, err := db.Preparex("SELECT id AS 'group.id' ,name AS 'group.name' FROM grp WHERE id = ?")
+func (grp Group) GetMap() hal.Entry {
+	return hal.Entry{
+		"id":   grp.ID,
+		"name": grp.Name,
+	}
+}
+func GetGroup(id int, db *sqlx.DB) (*Group, error) {
+	stmt, err := db.Preparex("SELECT id ,name  FROM grp WHERE id = ?")
 	if err != nil {
 		return nil, errors.New("unable to resolve statement")
 	}
 
 	var grp Group
-	err = stmt.Select(&grp, id)
+	err = stmt.Get(&grp, id)
 	if err != nil {
 		return nil, err
 	}

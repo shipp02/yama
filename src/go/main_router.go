@@ -211,19 +211,25 @@ func setupRouter() *gin.Engine {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"Error": ":id must be a valid integer"})
 			return
 		}
-		grp := Group{ID: int64(id)}
+		grp, err := GetGroup(id, db)
+		if err != nil {
+			log.Println(err)
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "requested group does not exist"})
+			return
+		}
 		members, err := grp.GetUserDetails(db)
 		if err != nil {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
-		var resp = hal.NewResource(Response{Content: "members", Length: len(members)}, c.Request.RequestURI)
+		var resp = hal.NewResource(Response{Content: "members", Length: len(members), element: grp}, c.Request.RequestURI)
 		for _, member := range members {
 			resp.Embedded.Add(hal.Relation(strconv.Itoa(int(member.ID))), hal.NewResource(member, "/u/"+member.Username))
 		}
 		c.JSON(http.StatusOK, resp)
 	}
 	authenticated.GET("/view/g/:id", viewGroups)
+	authenticated.GET("/view/g/")
 	return r
 }
 

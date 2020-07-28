@@ -24,14 +24,23 @@ func (auth Auth) GetMap() hal.Entry {
 }
 
 type Response struct {
+	element hal.Mapper
 	Length  int
 	Content string
 }
 
 func (resp Response) GetMap() hal.Entry {
-	return hal.Entry{
-		"Length":  resp.Length,
-		"Content": resp.Content,
+	if resp.element != nil {
+		return hal.Entry{
+			"Length":  resp.Length,
+			"Content": resp.Content,
+			"element": resp.element,
+		}
+	} else {
+		return hal.Entry{
+			"Length":  resp.Length,
+			"Content": resp.Content,
+		}
 	}
 }
 
