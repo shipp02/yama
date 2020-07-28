@@ -72,18 +72,18 @@ func (grp *Group) GetUsersID(db *sqlx.DB) ([]int64, error) {
 }
 
 func (grp *Group) GetUserDetails(db *sqlx.DB) ([]mUsers, error) {
-	stmt, err := db.Preparex("SELECT * FROM users_in_groups")
+	stmt, err := db.Preparex("SELECT * FROM users_in_groups WHERE `group.group_id` = ?")
 	if err != nil {
 		log.Println(err)
 		return nil, errors.New("unable to resolve statement")
 	}
 	var ugs []struct {
-		userId  int64 `db:"group.user_id"`
-		groupId int64 `db:"group.group_id"`
-		user    User
+		UserId  int64 `db:"group.user_id"`
+		GroupId int64 `db:"group.group_id"`
+		User
 	}
 
-	err = stmt.Get(&ugs)
+	err = stmt.Select(&ugs, grp.ID)
 	if err != nil {
 		log.Println(err)
 		return nil, errors.New("unable to resolve statement")
@@ -91,9 +91,9 @@ func (grp *Group) GetUserDetails(db *sqlx.DB) ([]mUsers, error) {
 	users := make([]mUsers, len(ugs))
 	for i, elem := range ugs {
 		users[i] = mUsers{
-			ID:       int32(elem.user.Id),
-			Name:     elem.user.Name,
-			Username: elem.user.Username,
+			ID:       int32(elem.User.Id),
+			Name:     elem.User.Name,
+			Username: elem.User.Username,
 		}
 	}
 	return users, nil

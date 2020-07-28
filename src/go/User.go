@@ -191,20 +191,28 @@ func DummyUsers(db *sqlx.DB) {
 	fmt.Println(n.GetChildren(1, db))
 
 	grp1 := &Group{Name: "Group one"}
-	err := grp1.CreateGroup(db)
-	if err != nil {
-		log.Println(err)
-	}
+	//err := grp1.CreateGroup(db)
+	//if err != nil {
+	//	log.Println(err)
+	//}
 
-	err = u1.AddToGroup(grp1.ID, db)
+	//err = u1.AddToGroup(grp1.ID, db)
+	//if err != nil {
+	//	log.Println(err)
+	//	return
+	//}
+	//_ = u2.AddToGroup(grp1.ID, db)
+
+	//ids, err := grp1.GetUsersID(db)
+	//fmt.Println(ids, err)
+	grp1.ID = 10
+	userDetails, err := grp1.GetUserDetails(db)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	_ = u2.AddToGroup(grp1.ID, db)
+	fmt.Println(userDetails)
 
-	ids, err := grp1.GetUsersID(db)
-	fmt.Println(ids, err)
 	//fmt.Println(grp1.GetUserDetails(db))
 	//n.ID  = 15
 	//n.CreateChild("child", db)
