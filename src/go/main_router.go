@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/jmoiron/sqlx"
 	"github.com/nvellon/hal"
 	"strings"
 
@@ -32,6 +33,7 @@ func setupRouter() *gin.Engine {
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
+	r.MaxMultipartMemory = 8 << 20
 
 	authenticated := r.Group("/")
 	authenticated.Use(JWTAuth)
@@ -265,11 +267,40 @@ func setupRouter() *gin.Engine {
 	authenticated.GET("/view/g/:id", viewGroups)
 	authenticated.GET("/edit/g/:name/create", createGroup)
 	authenticated.PUT("/edit/g/:id/add", addUserToGrp)
+
+	addDocumentHandling(authenticated, db)
 	return r
 }
 
-func addDocumentHandling(r *gin.RouterGroup) {
-	r.POST("/edit/d/")
+func addDocumentHandling(r *gin.RouterGroup, db *sqlx.DB) {
+	addDocument := func(c *gin.Context) {
+		node_id, err := strconv.Atoi(c.Params.ByName("node_id"))
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": ":node_id must be int"})
+			return
+		}
+		node := NodeByID(int64(node_id), db)
+		formFile, err := c.FormFile("file")
+		if formFile == nil || err != nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+		file, err := formFile.Open()
+		if file == nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+		dataSpace := make([]byte, 8<<20)
+		read, err := file.Read(dataSpace)
+		if err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		data := dataSpace[:read]
+		document, err := node.AddDocument(data, "pdf", db)
+		c.JSON(http.StatusOK, document)
+	}
+	r.POST("/edit/d/:node_id", addDocument)
 
 }
 func runServer(engine *gin.Engine) {

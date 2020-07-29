@@ -185,6 +185,10 @@ func DummyUsers(db *sqlx.DB) {
 	var n = mNode{
 		ID: 8,
 	}
+	_, err2 := n.AddDocument([]byte("Hello"), "pdf", db)
+	if err2 != nil {
+		log.Println(err2)
+	}
 	fmt.Println(n.GetParents(2, db))
 
 	n.ID = 5

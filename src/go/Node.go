@@ -129,3 +129,18 @@ func (node *mNode) FindChildren(fullPath string, db *sqlx.DB) *Nodes {
 	}
 	return (*Nodes)(currentNode.GetChildren(1, db))
 }
+
+func NodeByID(id int64, db *sqlx.DB) *mNode {
+	stmt, err := db.Preparex("SELECT id AS 'node.id', name AS 'node.name', document_id AS 'node.document_id' FROM node WHERE id = ?")
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+	var node mNode
+	err = stmt.Get(&node, id)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+	return &node
+}
