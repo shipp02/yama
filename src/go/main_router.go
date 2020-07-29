@@ -228,11 +228,50 @@ func setupRouter() *gin.Engine {
 		}
 		c.JSON(http.StatusOK, resp)
 	}
+	createGroup := func(c *gin.Context) {
+		name := c.Params.ByName("name")
+		if name == "" {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "name field cannot be empty"})
+		}
+		grp := Group{Name: name}
+		err := grp.CreateGroup(db)
+		if err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		resp := hal.NewResource(grp, "/view/g/"+strconv.Itoa(int(grp.ID)))
+		c.JSON(http.StatusOK, resp)
+	}
+	var addUserToGrp gin.HandlerFunc
+	addUserToGrp = func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Params.ByName("id"))
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": ":id  must be an integer"})
+			return
+		}
+		var u mUsers
+		err = c.BindJSON(&u)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "body must contain valid json"})
+			return
+		}
+		err = u.AddToGroup(int64(id), db)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "user or group does not exist"})
+			return
+		}
+		c.Status(http.StatusOK)
+	}
 	authenticated.GET("/view/g/:id", viewGroups)
-	authenticated.GET("/view/g/")
+	authenticated.GET("/edit/g/:name/create", createGroup)
+	authenticated.PUT("/edit/g/:id/add", addUserToGrp)
 	return r
 }
 
+func addDocumentHandling(r *gin.RouterGroup) {
+	r.POST("/edit/d/")
+
+}
 func runServer(engine *gin.Engine) {
 	srv := &http.Server{
 		Addr:    ":" + strconv.Itoa(PORT),
