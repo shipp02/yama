@@ -37,72 +37,10 @@ func setupRouter() *gin.Engine {
 
 	authenticated := r.Group("/")
 	authenticated.Use(JWTAuth)
-	{
-		var (
-			userDetails gin.HandlerFunc // Gives details of user
-			createPost  gin.HandlerFunc // Creates a post
-			viewPosts   gin.HandlerFunc // Shows all posts
-		)
-		userDetails = func(c *gin.Context) {
-			var u = UserByUsername(c.Params.ByName("username"), db)
-			// fmt.Println(user)
-			if u.ID != 0 {
-				ur := hal.NewResource(u, c.Request.URL.String())
-				c.JSON(http.StatusOK, ur)
-			} else {
-				s := "user with username %s does not exist"
-				c.JSON(http.StatusOK, gin.H{"error": fmt.Sprintf(s, c.Params.ByName("username"))})
-			}
-		}
-		createPost = func(c *gin.Context) {
-			user := UserByUsername(c.Params.ByName("username"), db)
-			var s = struct {
-				Text string
-			}{}
-			err := c.BindJSON(&s)
-			if err != nil {
-				c.AbortWithStatus(http.StatusBadRequest)
-				return
-			}
-			post := mPost{
-				OwnerID: user.ID,
-				Text:    &s.Text,
-			}
-			err = post.CreatePost(db)
-			if err != nil {
-				c.AbortWithStatus(http.StatusInternalServerError)
-				return
-			}
-			c.AbortWithStatus(http.StatusOK)
-
-		}
-		viewPosts = func(c *gin.Context) {
-			user := UserByUsername(c.Params.ByName("username"), db)
-			if user == nil {
-				c.AbortWithStatus(http.StatusBadRequest)
-			}
-			posts, err := user.GetPosts(db)
-			if err != nil {
-				log.Println(err)
-				c.AbortWithStatus(http.StatusInternalServerError)
-				return
-			}
-			resp := hal.NewResource(Response{Length: len(*posts), Content: "posts"}, c.Request.URL.String())
-			p := *posts
-			for _, rrp := range p {
-				resp.Embedded.Add("posts", hal.NewResource(rrp, ""))
-			}
-			c.JSON(http.StatusOK, resp)
-		}
-		view1Post := func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"Coming": "SOON"})
-		}
-		authenticated.GET("/u/:username", userDetails)
-		authenticated.POST("/edit/p/:username", createPost)
-		authenticated.PUT("/edit/p/:username/:id", view1Post)
-		authenticated.GET("/view/p/:username", viewPosts)
-		authenticated.GET("/view/p/:username/:id", view1Post)
-	}
+	addUserHandling(authenticated, db)
+	addPostHandling(authenticated, db)
+	addNodeHandling(authenticated, db)
+	addGroupHandling(authenticated, db)
 
 	r.POST("/u/:username/login", func(c *gin.Context) {
 		u := UserByUsername(c.Params.ByName("username"), db)
@@ -152,18 +90,128 @@ func setupRouter() *gin.Engine {
 	}
 	r.POST("/edit/u/create", createUser)
 
-	getChildren := func(c *gin.Context) {
-		fullPath := c.Params.ByName("name")
-		node := mNode{
-			ID: 1,
+	addDocumentHandling(authenticated, db)
+	return r
+}
+
+func addPostHandling(r *gin.RouterGroup, db *sqlx.DB) {
+
+	createPost := func(c *gin.Context) {
+		user := UserByUsername(c.Params.ByName("username"), db)
+		var s = struct {
+			Text string
+		}{}
+		err := c.BindJSON(&s)
+		if err != nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
 		}
-		//res := hal.NewResource(node.FindChildren(fullPath, db), c.Request.RequestURI)
-		nodes := node.FindChildren(fullPath, db)
-		//resp := MapArray(*NodeToMap(nodes), c.Request.RequestURI, "children")
-		//resp := hal.NewResource(nodes, c.Request.RequestURI)
-		//resp := NodeToMap((*[]mNode)(nodes))
-		c.JSON(http.StatusOK, nodes)
+		post := mPost{
+			OwnerID: user.ID,
+			Text:    &s.Text,
+		}
+		err = post.CreatePost(db)
+		if err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		c.AbortWithStatus(http.StatusOK)
+
 	}
+	viewPosts := func(c *gin.Context) {
+		user := UserByUsername(c.Params.ByName("username"), db)
+		if user == nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+		}
+		posts, err := user.GetPosts(db)
+		if err != nil {
+			log.Println(err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		resp := hal.NewResource(Response{Length: len(*posts), Content: "posts"}, c.Request.URL.String())
+		p := *posts
+		for _, rrp := range p {
+			resp.Embedded.Add("posts", hal.NewResource(rrp, ""))
+		}
+		c.JSON(http.StatusOK, resp)
+	}
+	view1Post := func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"Coming": "SOON"})
+	}
+	var edit1Post gin.HandlerFunc
+	r.POST("/edit/p/:username", createPost)
+	r.PUT("/edit/p/:username/:id", edit1Post)
+	r.GET("/view/p/:username", viewPosts)
+	r.GET("/view/p/:username/:id", view1Post)
+}
+
+func addUserHandling(r *gin.RouterGroup, db *sqlx.DB) {
+	userDetails := func(c *gin.Context) {
+		var u = UserByUsername(c.Params.ByName("username"), db)
+		// fmt.Println(user)
+		if u.ID != 0 {
+			ur := hal.NewResource(u, c.Request.URL.String())
+			c.JSON(http.StatusOK, ur)
+		} else {
+			s := "user with username %s does not exist"
+			c.JSON(http.StatusOK, gin.H{"error": fmt.Sprintf(s, c.Params.ByName("username"))})
+		}
+	}
+	r.GET("/u/:username", userDetails)
+
+}
+
+func addDocumentHandling(r *gin.RouterGroup, db *sqlx.DB) {
+	addDocument := func(c *gin.Context) {
+		nodeId, err := strconv.Atoi(c.Params.ByName("id"))
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": ":id must be int"})
+			return
+		}
+		node := NodeByID(int64(nodeId), db)
+		formFile, err := c.FormFile("file")
+		if formFile == nil || err != nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+		file, err := formFile.Open()
+		if file == nil {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+		dataSpace := make([]byte, 8<<20)
+		read, err := file.Read(dataSpace)
+		if err != nil {
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+		data := dataSpace[:read]
+		document, err := node.AddDocument(data, "pdf", db)
+		c.JSON(http.StatusOK, document)
+	}
+	r.POST("/edit/d/:id", addDocument)
+	viewDocument := func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Params.ByName("id"))
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": ":id must be integer"})
+			return
+		}
+		document, err := DocumentByID(int64(id), db)
+		if err != nil {
+			log.Println(err)
+			c.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		resp := hal.NewResource(document, c.Request.RequestURI)
+		c.JSON(http.StatusOK, resp)
+	}
+	r.GET("/view/d/:id", viewDocument)
+
+}
+
+func addNodeHandling(r *gin.RouterGroup, db *sqlx.DB) {
 	createChild := func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Params.ByName("id"))
 		if err != nil {
@@ -187,15 +235,22 @@ func setupRouter() *gin.Engine {
 		node := NodeByParent(int64(id), name.Name, db)
 		//resp := hal.NewResource(*node, c.Request.RequestURI)
 		c.JSON(http.StatusOK, *node)
-
 	}
-	var checkChild gin.HandlerFunc
-	checkChild = func(c *gin.Context) {}
-	authenticated.POST("/edit/tree/:id/check", checkChild)
-	authenticated.POST("/edit/tree/:id", createChild)
-	authenticated.GET("/view/tree/down/~/*name", getChildren)
-	var getChildrenContext gin.HandlerFunc
-	getChildrenContext = func(c *gin.Context) {
+	r.POST("/edit/tree/:id", createChild)
+	getChildren := func(c *gin.Context) {
+		fullPath := c.Params.ByName("name")
+		node := mNode{
+			ID: 1,
+		}
+		//res := hal.NewResource(node.FindChildren(fullPath, db), c.Request.RequestURI)
+		nodes := node.FindChildren(fullPath, db)
+		//resp := MapArray(*NodeToMap(nodes), c.Request.RequestURI, "children")
+		//resp := hal.NewResource(nodes, c.Request.RequestURI)
+		//resp := NodeToMap((*[]mNode)(nodes))
+		c.JSON(http.StatusOK, nodes)
+	}
+	r.GET("/view/tree/down/~/*name", getChildren)
+	getChildrenContext := func(c *gin.Context) {
 		contextPath := c.Request.Header.Get("Context")
 		fullPath := contextPath + c.Params.ByName("path")
 		node := mNode{
@@ -204,10 +259,14 @@ func setupRouter() *gin.Engine {
 		nodes := *node.FindChildren(fullPath, db)
 		c.JSON(http.StatusOK, nodes)
 	}
-	authenticated.GET("/view/tree/down/_/*path", getChildrenContext)
+	r.GET("/view/tree/down/_/*path", getChildrenContext)
+	checkChild := func(c *gin.Context) {}
+	r.POST("/edit/tree/:id/check", checkChild)
 
-	var viewGroups gin.HandlerFunc
-	viewGroups = func(c *gin.Context) {
+}
+func addGroupHandling(r *gin.RouterGroup, db *sqlx.DB) {
+
+	viewGroups := func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Params.ByName("id"))
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"Error": ":id must be a valid integer"})
@@ -244,8 +303,7 @@ func setupRouter() *gin.Engine {
 		resp := hal.NewResource(grp, "/view/g/"+strconv.Itoa(int(grp.ID)))
 		c.JSON(http.StatusOK, resp)
 	}
-	var addUserToGrp gin.HandlerFunc
-	addUserToGrp = func(c *gin.Context) {
+	addUserToGrp := func(c *gin.Context) {
 		id, err := strconv.Atoi(c.Params.ByName("id"))
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": ":id  must be an integer"})
@@ -264,44 +322,9 @@ func setupRouter() *gin.Engine {
 		}
 		c.Status(http.StatusOK)
 	}
-	authenticated.GET("/view/g/:id", viewGroups)
-	authenticated.GET("/edit/g/:name/create", createGroup)
-	authenticated.PUT("/edit/g/:id/add", addUserToGrp)
-
-	addDocumentHandling(authenticated, db)
-	return r
-}
-
-func addDocumentHandling(r *gin.RouterGroup, db *sqlx.DB) {
-	addDocument := func(c *gin.Context) {
-		node_id, err := strconv.Atoi(c.Params.ByName("node_id"))
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": ":node_id must be int"})
-			return
-		}
-		node := NodeByID(int64(node_id), db)
-		formFile, err := c.FormFile("file")
-		if formFile == nil || err != nil {
-			c.AbortWithStatus(http.StatusBadRequest)
-			return
-		}
-		file, err := formFile.Open()
-		if file == nil {
-			c.AbortWithStatus(http.StatusBadRequest)
-			return
-		}
-		dataSpace := make([]byte, 8<<20)
-		read, err := file.Read(dataSpace)
-		if err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
-		data := dataSpace[:read]
-		document, err := node.AddDocument(data, "pdf", db)
-		c.JSON(http.StatusOK, document)
-	}
-	r.POST("/edit/d/:node_id", addDocument)
-
+	r.GET("/view/g/:id", viewGroups)
+	r.GET("/edit/g/:name/create", createGroup)
+	r.PUT("/edit/g/:id/add", addUserToGrp)
 }
 func runServer(engine *gin.Engine) {
 	srv := &http.Server{
