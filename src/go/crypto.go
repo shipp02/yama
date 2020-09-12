@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -18,21 +19,19 @@ import (
 
 // Sha256 returns hex hash string of a string
 func Sha256(s string) (hash string) {
-	pass := []byte(s)
-	binHash := sha256.Sum256(pass)
+	binHash := sha256.Sum256([]byte(s))
 	dst := make([]byte, hex.EncodedLen(len(binHash)))
 	hex.Encode(dst, binHash[:])
 	return string(dst)
 }
 
 func Pbkdf2(s string) (hash string) {
-	pass := []byte(s)
 	salt := make([]byte, 20)
 	_, err := rand.Read(salt)
 	if err != nil {
 		log.Fatal("func Pbkdf2 Password failed", err)
 	}
-	binHash := pbkdf2.Key(pass, salt, 4096, 256, sha256.New)
+	binHash := pbkdf2.Key([]byte(s), salt, 4096, 256, sha256.New)
 	strSalt := base64.StdEncoding.EncodeToString(salt)
 	strHash := base64.StdEncoding.EncodeToString(binHash)
 	return strSalt + ":" + strHash
@@ -54,12 +53,12 @@ func CheckPass(pass *Password, hash string) (t bool) {
 }
 
 func (u *mUsers) GetJWT(jwtChan *chan string) {
-	conf := DefaultConfig()
 	var jc jwt.Claims
-	jc.Issuer = *conf.Issuer
+	jc.Issuer = c.Issuer
 	jc.Subject = u.Username
 	jc.KeyID = u.PasswordHash
-	jwtToken, err := jc.HMACSign(jwt.HS512, *conf.Secret)
+	jc.ID = string(u.ID)
+	jwtToken, err := jc.HMACSign(jwt.HS512, c.Secret)
 	if err != nil {
 		fmt.Println("GetUser jwt", err)
 	}
@@ -68,21 +67,20 @@ func (u *mUsers) GetJWT(jwtChan *chan string) {
 	close(jChan)
 }
 
-func CheckJWT(strJwt string) bool {
+func CheckJWT(strJwt string) (bool, *jwt.Claims) {
 	binJwt, err := base64.StdEncoding.DecodeString(strJwt)
 	if err != nil {
 		log.Println(err, "func CheckJWT base64 decode failed")
 	}
-	conf := DefaultConfig()
-	jc, err := jwt.HMACCheck(binJwt, *conf.Secret)
+	jc, err := jwt.HMACCheck(binJwt, c.Secret)
 	if err != nil || jc == nil {
 		log.Println(err)
-		return false
+		return false, nil
 	}
-	if jc.Issuer == *conf.Issuer {
-		return true
+	if jc.Issuer == c.Issuer {
+		return true, jc
 	}
-	return false
+	return false, nil
 }
 
 func mainC() {
@@ -91,7 +89,19 @@ func mainC() {
 
 var JWTAuth = func(c *gin.Context) {
 	strJwt := c.Request.Header.Get("X-Auth-Key")
-	if CheckJWT(strJwt) {
+	if valid, jc := CheckJWT(strJwt); valid {
+		id, err := strconv.Atoi(jc.ID)
+		if err != nil {
+			return
+		}
+		c.Keys["user_id"] = id
+		c.Keys["username"] = jc.Subject
+		c.Keys["user_pass"] = jc.KeyID
+		c.Keys["user"] = mUsers{
+			ID:           int32(id),
+			Username:     jc.Subject,
+			PasswordHash: jc.KeyID,
+		}
 	} else {
 		c.JSON(http.StatusForbidden, gin.H{"Cease": "Desist"})
 		c.Abort()

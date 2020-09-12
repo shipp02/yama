@@ -7,31 +7,25 @@ import (
 	"log"
 )
 
-var c *Config
+var c = DefaultConfig()
 
 type Config struct {
 	PrivateKey *rsa.PrivateKey
 	PublicKey  *rsa.PublicKey
-	Issuer     *string
-	Secret     *[]byte
+	Issuer     string
+	Secret     []byte
 }
 
 func DefaultConfig() *Config {
-	if c == nil {
-		fmt.Println("Create config")
-		c = new(Config)
-		var err error
-		c.PrivateKey, err = rsa.GenerateKey(rand.Reader, 2048)
-		// fmt.Println("Private Key:",c.PrivateKey)
-		if err != nil {
-			log.Fatal(err)
-		}
-		c.PublicKey = &c.PrivateKey.PublicKey
-		// fmt.Println("Public Key:",c.PublicKey)
-		iss := "yama"
-		c.Issuer = &iss
-		x := []byte("Sec key")
-		c.Secret = &x
+	fmt.Println("Create config")
+	c := new(Config)
+	var err error
+	c.PrivateKey, err = rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		log.Fatal(err)
 	}
+	c.PublicKey = &c.PrivateKey.PublicKey
+	c.Issuer = "yama"
+	c.Secret = []byte("Sec key")
 	return c
 }
