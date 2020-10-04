@@ -14,6 +14,31 @@ type MDocument struct {
 	ID       int64  `db:"document.id"`
 }
 
+var documentStmt *docStmt
+
+type docStmt struct {
+	AddDocument  sqlx.Stmt
+	DocumentByID sqlx.Stmt
+}
+
+func initDocStmt(db *sqlx.DB) {
+	addDocumentStmt, err := db.Preparex("INSERT INTO document (name, content, type) VALUES (?, ?, ?)")
+	if err != nil {
+		log.Fatal("addDocumentStmt not resolved")
+	}
+	docByIDStmt, err := db.Preparex(`SELECT
+       id AS 'document.id', 
+       name AS 'document.name', 
+       content AS 'document.content',
+       type AS 'document.type'
+	FROM document
+	WHERE id = ?`)
+	if err != nil {
+		log.Fatal("documentByID not resolved")
+	}
+	documentStmt = &docStmt{AddDocument: *addDocumentStmt, DocumentByID: *docByIDStmt}
+}
+
 func (doc MDocument) GetMap() hal.Entry {
 	return hal.Entry{
 		"data": doc.Data,
@@ -30,11 +55,7 @@ func (node *mNode) AddDocument(data []byte, docType string, db *sqlx.DB) (MDocum
 		doc, _ = node.GetDocument(db)
 		return doc, errors.New("document exists")
 	}
-	stmt, err := db.Preparex("INSERT INTO document (name, content, type) VALUES (?, ?, ?)")
-	if err != nil {
-		return doc, errors.New("unable to resolve stmt")
-	}
-	exec, err := stmt.Exec(node.Name, data, docType)
+	exec, err := documentStmt.AddDocument.Exec(node.Name, data, docType)
 	if err != nil {
 		return doc, err
 	}
@@ -54,18 +75,7 @@ func (node *mNode) GetDocument(db *sqlx.DB) (MDocument, error) {
 
 func DocumentByID(id int64, db *sqlx.DB) (MDocument, error) {
 	var doc MDocument
-	stmt, err := db.Preparex(`SELECT
-       id AS 'document.id', 
-       name AS 'document.name', 
-       content AS 'document.content',
-       type AS 'document.type'
-	FROM document
-	WHERE id = ?`)
-	if err != nil {
-		log.Println(err)
-		return doc, errors.New("unable to create statement")
-	}
-	err = stmt.Get(&doc, id)
+	err := documentStmt.DocumentByID.Get(&doc, id)
 	if err != nil {
 		log.Println(err)
 		return doc, err

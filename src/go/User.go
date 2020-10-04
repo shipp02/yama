@@ -28,11 +28,11 @@ type User struct {
 
 type mUsers model.Users
 
-func (u mUsers) GetMap() hal.Entry {
+func (usr mUsers) GetMap() hal.Entry {
 	return hal.Entry{
-		"id":       u.ID,
-		"name":     u.Name,
-		"username": u.Username,
+		"id":       usr.ID,
+		"name":     usr.Name,
+		"username": usr.Username,
 	}
 }
 
@@ -120,14 +120,14 @@ func UserByUsername(username string, db *sqlx.DB) *mUsers {
 }
 
 // CreateUser creates an entry for User in database
-func (u *mUsers) CreateUser(db *sqlx.DB) error {
+func (usr *mUsers) CreateUser(db *sqlx.DB) error {
 	var err error
-	if u.Name == "" || u.Username == "" || u.PasswordHash == "" {
+	if usr.Name == "" || usr.Username == "" || usr.PasswordHash == "" {
 		err = errors.New("user incomplete")
 		return err
 	}
-	if uCheck := UserByUsername(u.Username, db); uCheck.ID != 0 {
-		u.ID = uCheck.ID
+	if uCheck := UserByUsername(usr.Username, db); uCheck.ID != 0 {
+		usr.ID = uCheck.ID
 		return errors.New("user exists")
 	}
 	exec := Users.INSERT(
@@ -135,16 +135,16 @@ func (u *mUsers) CreateUser(db *sqlx.DB) error {
 		Users.Username,
 		Users.PasswordHash,
 	).VALUES(
-		u.Name,
-		u.Username,
-		Pbkdf2(u.PasswordHash))
+		usr.Name,
+		usr.Username,
+		Pbkdf2(usr.PasswordHash))
 	//log.Println(exec.DebugSql())
 	result, err := exec.Exec(db)
 	if err != nil {
 		log.Fatal("Create User: ", err)
 	}
 	id, _ := result.LastInsertId()
-	u.ID = int32(id)
+	usr.ID = int32(id)
 	log.Println("Create User", result)
 	return err
 }

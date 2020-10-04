@@ -54,7 +54,7 @@ func GetPost(db *sqlx.DB, p *mPost) (*mPost, error) {
 }
 
 // GetPosts gets all posts of a user
-func (u *mUsers) GetPosts(db *sqlx.DB) (*[]mPost, error) {
+func (usr *mUsers) GetPosts(db *sqlx.DB) (*[]mPost, error) {
 	var err error
 	jetFlag := true
 	if jetFlag {
@@ -62,7 +62,7 @@ func (u *mUsers) GetPosts(db *sqlx.DB) (*[]mPost, error) {
 		stmt := SELECT(Posts.ID.AS("mPost.id"),
 			Posts.OwnerID.AS("mPost.owner_id"),
 			Posts.Text.AS("mPost.Text")).FROM(Posts).
-			WHERE(Posts.OwnerID.EQ(Int(int64(u.ID))))
+			WHERE(Posts.OwnerID.EQ(Int(int64(usr.ID))))
 		err := stmt.Query(db, &posts)
 		if err != nil {
 			if strings.Contains(err.Error(), "qrm: no rows in result set") {
@@ -78,7 +78,7 @@ func (u *mUsers) GetPosts(db *sqlx.DB) (*[]mPost, error) {
 		SELECT * FROM posts
 		WHERE owner_id=$(OID)
 	`
-		query = strings.Replace(query, "$(OID)", strconv.FormatInt(int64(u.ID), 10), 1)
+		query = strings.Replace(query, "$(OID)", strconv.FormatInt(int64(usr.ID), 10), 1)
 		// fmt.Println(query)
 		err2 := db.Select(&posts, query)
 		if err2 != nil {

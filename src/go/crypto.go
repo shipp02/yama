@@ -52,12 +52,12 @@ func CheckPass(pass *Password, hash string) (t bool) {
 	return false
 }
 
-func (u *mUsers) GetJWT(jwtChan *chan string) {
+func (usr *mUsers) GetJWT(jwtChan *chan string) {
 	var jc jwt.Claims
 	jc.Issuer = c.Issuer
-	jc.Subject = u.Username
-	jc.KeyID = u.PasswordHash
-	jc.ID = string(u.ID)
+	jc.Subject = usr.Username
+	jc.KeyID = usr.PasswordHash
+	jc.ID = string(usr.ID)
 	jwtToken, err := jc.HMACSign(jwt.HS512, c.Secret)
 	if err != nil {
 		fmt.Println("GetUser jwt", err)
@@ -94,9 +94,6 @@ var JWTAuth = func(c *gin.Context) {
 		if err != nil {
 			return
 		}
-		c.Keys["user_id"] = id
-		c.Keys["username"] = jc.Subject
-		c.Keys["user_pass"] = jc.KeyID
 		c.Keys["user"] = mUsers{
 			ID:           int32(id),
 			Username:     jc.Subject,

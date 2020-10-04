@@ -7,6 +7,8 @@ import (
 	"log"
 )
 
+var grpStmt grpStmtStruct
+
 type Group struct {
 	ID   int64  `db:"id"`
 	Name string `db:"name"`
@@ -18,6 +20,24 @@ func (grp Group) GetMap() hal.Entry {
 		"name": grp.Name,
 	}
 }
+
+type grpStmtStruct struct {
+	Get        sqlx.Stmt
+	Create     sqlx.Stmt
+	GetUserIDs sqlx.Stmt
+	GetUsers   sqlx.Stmt
+}
+
+//func initGrpStmt () grpStmtStruct{
+//	grpStmt = grpStmtStruct{
+//		Get:        nil,
+//		Create:     nil,
+//		GetUserIDs: nil,
+//		GetUsers:   nil,
+//	}
+//	return grpStmt
+//}
+
 func GetGroup(id int, db *sqlx.DB) (*Group, error) {
 	stmt, err := db.Preparex("SELECT id ,name  FROM grp WHERE id = ?")
 	if err != nil {

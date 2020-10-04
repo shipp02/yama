@@ -24,8 +24,18 @@ const (
 	PORT = 8080
 )
 
+var (
+	db     *sqlx.DB
+	engine *gin.Engine
+)
+
+func init() {
+	db = Connect()
+	initDocStmt(db)
+	engine = setupRouter()
+}
+
 func setupRouter() *gin.Engine {
-	db := Connect()
 	go DummyUsers(db)
 	r := gin.Default()
 
@@ -44,7 +54,7 @@ func setupRouter() *gin.Engine {
 
 	r.POST("/u/:username/login", func(c *gin.Context) {
 		u := UserByUsername(c.Params.ByName("username"), db)
-		//Length, err := strconv.Atoi(c.Request.Header.Get("Content-Length"))
+
 		var p = new(Password)
 		err := c.BindJSON(p)
 		if err != nil {
@@ -97,9 +107,8 @@ func setupRouter() *gin.Engine {
 func addPostHandling(r *gin.RouterGroup, db *sqlx.DB) {
 
 	createPost := func(c *gin.Context) {
-		user := UserByUsername(c.Params.ByName("username"), db)
 		var s = struct {
-			Text string
+			Text string `json:"text"`
 		}{}
 		err := c.BindJSON(&s)
 		if err != nil {
@@ -107,7 +116,7 @@ func addPostHandling(r *gin.RouterGroup, db *sqlx.DB) {
 			return
 		}
 		post := mPost{
-			OwnerID: user.ID,
+			OwnerID: c.Keys["user"].(mUsers).ID,
 			Text:    &s.Text,
 		}
 		err = post.CreatePost(db)
@@ -116,8 +125,8 @@ func addPostHandling(r *gin.RouterGroup, db *sqlx.DB) {
 			return
 		}
 		c.AbortWithStatus(http.StatusOK)
-
 	}
+
 	viewPosts := func(c *gin.Context) {
 		user := UserByUsername(c.Params.ByName("username"), db)
 		if user == nil {
@@ -140,6 +149,9 @@ func addPostHandling(r *gin.RouterGroup, db *sqlx.DB) {
 		c.JSON(http.StatusOK, gin.H{"Coming": "SOON"})
 	}
 	var edit1Post gin.HandlerFunc
+	edit1Post = func(c *gin.Context) {
+		//user := c.Keys["user"].(mUsers)
+	}
 	r.POST("/edit/p/:username", createPost)
 	r.PUT("/edit/p/:username/:id", edit1Post)
 	r.GET("/view/p/:username", viewPosts)
@@ -264,6 +276,7 @@ func addNodeHandling(r *gin.RouterGroup, db *sqlx.DB) {
 	r.POST("/edit/tree/:id/check", checkChild)
 
 }
+
 func addGroupHandling(r *gin.RouterGroup, db *sqlx.DB) {
 
 	viewGroups := func(c *gin.Context) {
@@ -326,6 +339,7 @@ func addGroupHandling(r *gin.RouterGroup, db *sqlx.DB) {
 	r.GET("/edit/g/:name/create", createGroup)
 	r.PUT("/edit/g/:id/add", addUserToGrp)
 }
+
 func runServer(engine *gin.Engine) {
 	srv := &http.Server{
 		Addr:    ":" + strconv.Itoa(PORT),
@@ -356,6 +370,5 @@ func runServer(engine *gin.Engine) {
 }
 
 func main() {
-	r := setupRouter()
-	runServer(r)
+	runServer(engine)
 }
