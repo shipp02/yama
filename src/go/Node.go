@@ -19,6 +19,13 @@ type mNode struct {
 	Depth      sql.NullInt64 `db:"node.depth"`
 }
 
+const (
+	GET_PARENTS   = "CALL GetParents(?, ?)"       // args  max_depth current_node_id
+	GET_BY_PARENT = "CALL FindChildDetails(?, ?)" // args parentID, child_name
+	GET_CHILDREN  = "CALL GetChildren(?, ?)"      // args depth of children to find, current_node_is
+	CREATE_CHILD  = "CALL CreateChild(?, ?)"      // args current_node_id, child_name
+)
+
 func newMNode(ID int64) *mNode {
 	return &mNode{ID: ID}
 }

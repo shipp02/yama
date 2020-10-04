@@ -17,8 +17,8 @@ type MDocument struct {
 var documentStmt *docStmt
 
 type docStmt struct {
-	AddDocument  sqlx.Stmt
-	DocumentByID sqlx.Stmt
+	AddDocument  *sqlx.Stmt
+	DocumentByID *sqlx.Stmt
 }
 
 func initDocStmt(db *sqlx.DB) {
@@ -36,7 +36,7 @@ func initDocStmt(db *sqlx.DB) {
 	if err != nil {
 		log.Fatal("documentByID not resolved")
 	}
-	documentStmt = &docStmt{AddDocument: *addDocumentStmt, DocumentByID: *docByIDStmt}
+	documentStmt = &docStmt{AddDocument: addDocumentStmt, DocumentByID: docByIDStmt}
 }
 
 func (doc MDocument) GetMap() hal.Entry {
